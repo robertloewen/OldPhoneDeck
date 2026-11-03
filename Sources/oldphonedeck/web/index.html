@@ -2,9 +2,10 @@
 <html>
 <head>
 <meta charset="utf-8">
-<!-- OldPhoneDeck: a car-dashboard style home for a phone in landscape (side rail + dashboard tiles + app grid).
+<!-- OldPhoneDeck: a car-dashboard style home for a phone in landscape. Swipe between pages (Immersive now playing,
+     Cluster, app grid, Phone); pull the app rail in from the left edge.
      Must run in iOS 8/9 Safari (iPhone 4S): ES5 syntax only, no fetch, no flex gap, no Intl.
-     Modern iPhones additionally get a Phone app (camera + mic to the Mac) and voice input for Take note. -->
+     Modern iPhones additionally get a Phone page (camera + mic to the Mac) and voice input for Take note. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -18,122 +19,121 @@
     -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0);
     -webkit-text-size-adjust: 100%; overscroll-behavior: none; touch-action: manipulation; }
   /* Motion: one vocabulary everywhere (written out, since iOS 9 has no CSS variables).
-     ease-out cubic-bezier(.23,1,.32,1) for entering/press · ease-in-out cubic-bezier(.77,0,.175,1) for movement.
-     Press 160ms, views/toasts ~200-300ms, modals 250ms in / 180ms out. */
+     ease-out cubic-bezier(.23,1,.32,1) for entering/press · iOS drawer curve cubic-bezier(.32,.72,0,1) for pages and the rail.
+     Press 160ms, toasts ~300ms, modals 250ms in / 180ms out, page/rail settle 420ms. */
   /* Everything is laid out on a stage 320pt tall; its width follows the screen (480 on a 4S, wider on modern phones). */
   #stage { position: absolute; left: 0; top: 0; width: 480px; height: 320px; overflow: hidden;
     -webkit-transform-origin: 0 0; transform-origin: 0 0; }
   /* Measures the notch / Dynamic Island / home-indicator insets (0 on old iOS, which ignores env()). */
   #safe { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-  /* Views crossfade with a hint of scale, so switching reads as one surface replacing another. */
-  .view { position: absolute; left: 0; top: 0; right: 0; bottom: 0; visibility: hidden; opacity: 0;
-    -webkit-transform: scale(.985); transform: scale(.985);
-    -webkit-transition: opacity 180ms cubic-bezier(.23,1,.32,1), -webkit-transform 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms;
-    transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms; }
-  .view.on { visibility: visible; opacity: 1; -webkit-transform: none; transform: none;
-    -webkit-transition-duration: 240ms; transition-duration: 240ms; -webkit-transition-delay: 0s; transition-delay: 0s; }
+  .tnum { -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
   /* Shared press feedback: scale down the instant a finger lands. */
   .press { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
     transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }
   .press.down { -webkit-transform: scale(.94); transform: scale(.94); }
-  .tile.press.down, .pbtn.down, .btn.down { -webkit-transform: scale(.97); transform: scale(.97); }
+  .pill.down, .pbtn.down, .btn.down, .dial.down { -webkit-transform: scale(.97); transform: scale(.97); }
 
-  /* ---- side rail: time, Take note + apps (scrolling), home button (a bottom bar in portrait) ---- */
-  #rail { position: absolute; z-index: 5; background: #141416; box-shadow: inset -.5px 0 0 rgba(255,255,255,.08); }
-  #rail.bar { box-shadow: inset 0 .5px 0 rgba(255,255,255,.08); }
+  /* ---- pages: a horizontal track that follows the finger and settles on the nearest page ---- */
+  #track { position: absolute; left: 0; top: 0; bottom: 0; }
+  #track.settle { -webkit-transition: -webkit-transform 420ms cubic-bezier(.32,.72,0,1); transition: transform 420ms cubic-bezier(.32,.72,0,1); }
+  .page { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  #dots { position: absolute; left: 0; right: 0; bottom: 6px; height: 6px; text-align: center; font-size: 0; pointer-events: none; }
+  #dots i { display: inline-block; width: 6px; height: 6px; border-radius: 3px; margin: 0 4px; background: rgba(255,255,255,.25);
+    -webkit-transition: background 250ms ease; transition: background 250ms ease; }
+  #dots i.on { background: #fff; }
+
+  /* ---- rail: a drawer pulled in from the left edge, over a dimmed page ---- */
+  #railScrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 6; background: #000; opacity: 0; visibility: hidden; }
+  #railScrim.show { visibility: visible; }
+  #rail { position: absolute; left: 0; top: 0; bottom: 0; width: 84px; z-index: 7; background: #141416;
+    box-shadow: inset -.5px 0 0 rgba(255,255,255,.08), 8px 0 30px rgba(0,0,0,.5);
+    -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  #rail.settle, #railScrim.settle { -webkit-transition: -webkit-transform 420ms cubic-bezier(.32,.72,0,1), opacity 420ms cubic-bezier(.32,.72,0,1);
+    transition: transform 420ms cubic-bezier(.32,.72,0,1), opacity 420ms cubic-bezier(.32,.72,0,1); }
   #rClock { position: absolute; left: 0; right: 0; top: 13px; text-align: center; line-height: 1; }
-  #time { font-size: 17px; font-weight: 600; letter-spacing: -.3px;
-    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
+  #time { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
   #link { display: block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin: 7px auto 0; }
   #link.ok { background: #30d158; }
   /* Take note + every chosen app, in a column that scrolls with momentum; edges fade instead of cutting off. */
-  #rDock { position: absolute; left: 0; right: 0; top: 50px; bottom: 70px; padding: 10px 0 4px; box-sizing: border-box;
+  #rDock { position: absolute; left: 0; right: 0; top: 50px; bottom: 0; padding: 10px 0 8px; box-sizing: border-box;
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
     -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%);
     mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%); }
   #rDock::-webkit-scrollbar { display: none; }
-  .ricon { position: relative; width: 50px; height: 50px; margin: 0 auto 12px; border-radius: 12px; }
-  .ricon img { position: absolute; left: -6px; top: -6px; width: 62px; height: 62px; }
-  .rhome { position: absolute; left: 50%; bottom: 12px; width: 50px; height: 50px; margin-left: -25px; border-radius: 12px;
-    background: #2c2c2e; }
-  /* Both glyphs live in the button; the inactive one shrinks away so the swap reads as a morph. */
-  .rhome svg { position: absolute; left: 13px; top: 13px;
-    -webkit-transition: opacity 200ms cubic-bezier(.23,1,.32,1), -webkit-transform 200ms cubic-bezier(.23,1,.32,1);
-    transition: opacity 200ms cubic-bezier(.23,1,.32,1), transform 200ms cubic-bezier(.23,1,.32,1); }
-  .rhome .g-dash, .rhome.dash .g-grid { opacity: 0; -webkit-transform: scale(.6); transform: scale(.6); }
-  .rhome.dash .g-dash { opacity: 1; -webkit-transform: none; transform: none; }
-  #rail.bar #rClock { left: 18px; right: auto; top: 50%; margin-top: -14px; text-align: left; }
-  #rail.bar #link { margin-left: 0; }
-  #rail.bar #rDock { left: 84px; right: 80px; top: 0; bottom: 0; padding: 16px 6px; white-space: nowrap;
-    overflow-x: auto; overflow-y: hidden; touch-action: pan-x;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%);
-    mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%); }
-  #rail.bar .ricon { display: inline-block; vertical-align: top; margin: 0 6px; }
-  #rail.bar .rhome { left: auto; right: 18px; bottom: auto; top: 50%; margin: -25px 0 0; }
+  .ricon { position: relative; width: 54px; height: 54px; margin: 0 auto 12px; border-radius: 13px; }
+  .ricon img { position: absolute; left: -6px; top: -6px; width: 66px; height: 66px; }
 
-  /* ---- tiles (dashboard) ---- */
-  .tile { position: absolute; border-radius: 16px; box-sizing: border-box; overflow: hidden; background: #1c1c1e; }
-  .tile h3 { margin: 0; position: absolute; left: 14px; top: 12px; font-size: 13px; font-weight: 600; color: #fff; }
-  .tile h3 i { font-style: normal; color: #8e8e93; font-weight: 500; }
-
-  /* Now playing */
-  #mArt, #mNote { position: absolute; border-radius: 10px; }
+  /* ---- now playing atoms (shared by Immersive and Cluster) ---- */
+  .m-art, .m-note { position: absolute; border-radius: 10px; }
   /* New artwork fades in once it has loaded, instead of popping. */
-  #mArt { box-shadow: 0 4px 14px rgba(0,0,0,.5); opacity: 0; -webkit-transition: opacity 300ms ease; transition: opacity 300ms ease; }
-  #mArt.shown { opacity: 1; }
-  #mNote { text-align: center; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
-  #mInfo { position: absolute; }
-  #mApp { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #8e8e93; }
-  #mApp.spotify { color: #1ed760; }
-  #mApp.music { color: #ff375f; }
-  #mTitle { margin-top: 5px; font-size: 17px; font-weight: 700; line-height: 21px; letter-spacing: -.3px;
-    max-height: 42px; overflow: hidden; }
-  #mArtist { font-size: 13px; color: #aeaeb2; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* While scrubbing the bar thickens (from its centre line) and the times light up, like Apple Music. */
-  #mProg { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden;
+  .m-art { box-shadow: 0 10px 28px rgba(0,0,0,.5); opacity: 0; -webkit-transition: opacity 300ms ease; transition: opacity 300ms ease; }
+  .m-art.shown { opacity: 1; }
+  .m-note { text-align: center; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
+  .m-meta { position: absolute; }
+  .m-app { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: rgba(255,255,255,.7); }
+  .m-app.spotify { color: #1ed760; }
+  .m-app.music { color: #ff375f; }
+  .m-title { margin-top: 5px; font-size: 17px; font-weight: 700; line-height: 21px; letter-spacing: -.3px; max-height: 42px; overflow: hidden; }
+  .m-artist { font-size: 13px; color: rgba(255,255,255,.72); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* While scrubbing the bar thickens and the times light up, like Apple Music. */
+  .m-prog { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.22); overflow: hidden;
     -webkit-transition: -webkit-transform 200ms cubic-bezier(.23,1,.32,1); transition: transform 200ms cubic-bezier(.23,1,.32,1); }
-  #mProg.scrub { -webkit-transform: scaleY(2.25); transform: scaleY(2.25); }
-  #mHit { position: absolute; touch-action: none; }
+  .m-prog.scrub { -webkit-transform: scaleY(2.25); transform: scaleY(2.25); }
   /* Progress glides at constant speed (linear, one tick per second) via scaleX instead of jumping in width. */
-  #mProg i { display: block; height: 100%; width: 100%; background: #fff;
+  .m-prog i { display: block; height: 100%; width: 100%; background: #fff;
     -webkit-transform-origin: 0 0; transform-origin: 0 0; -webkit-transform: scaleX(0); transform: scaleX(0);
     -webkit-transition: -webkit-transform 1s linear; transition: transform 1s linear; }
-  #mProg i.jump { -webkit-transition: none; transition: none; }
-  #mTimes { position: absolute; font-size: 10px; font-weight: 600; color: #8e8e93;
-    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum";
+  .m-prog i.jump { -webkit-transition: none; transition: none; }
+  .m-times { position: absolute; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.6);
     -webkit-transition: color 200ms ease; transition: color 200ms ease; }
-  #mTimes.scrub { color: #fff; }
-  #mTimes span { float: right; }
-  #mBtns { position: absolute; height: 46px; text-align: center; }
+  .m-times.scrub { color: #fff; }
+  .m-times span { float: right; }
+  .m-hit { position: absolute; touch-action: none; }
+  .m-btns { position: absolute; height: 46px; text-align: center; white-space: nowrap; }
   .mb { display: inline-block; position: relative; width: 56px; height: 46px; vertical-align: top; }
   .mb svg { position: absolute; left: 50%; top: 50%; }
   .mb.down { opacity: .6; }
-  #mPlay svg { -webkit-transition: opacity 160ms cubic-bezier(.23,1,.32,1), -webkit-transform 160ms cubic-bezier(.23,1,.32,1);
+  .m-play svg { -webkit-transition: opacity 160ms cubic-bezier(.23,1,.32,1), -webkit-transform 160ms cubic-bezier(.23,1,.32,1);
     transition: opacity 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1); }
-  #mPlay .i-pause, #mPlay.playing .i-play { opacity: 0; -webkit-transform: scale(.7); transform: scale(.7); }
-  #mPlay.playing .i-pause { opacity: 1; -webkit-transform: none; transform: none; }
+  .m-play .i-pause, .m-play.playing .i-play { opacity: 0; -webkit-transform: scale(.7); transform: scale(.7); }
+  .m-play.playing .i-pause { opacity: 1; -webkit-transform: none; transform: none; }
 
-  /* Internet */
-  .big { position: absolute; left: 14px; font-size: 30px; font-weight: 700; letter-spacing: -1px; line-height: 32px; white-space: nowrap; }
-  .big small { font-size: 12px; font-weight: 600; color: #8e8e93; letter-spacing: 0; margin-left: 3px; }
-  .sub { position: absolute; left: 14px; font-size: 12px; color: #aeaeb2; white-space: nowrap; }
-  .arrow { color: #64d2ff; font-weight: 700; }
-  .arrow.up { color: #30d158; }
-  #spark { position: absolute; left: 14px; display: block; }
+  /* ---- page 1 · Immersive: the cover sets the mood, glass on top ---- */
+  #imm { position: absolute; border-radius: 18px; overflow: hidden; background: #111; }
+  #immBg { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; opacity: 0;
+    -webkit-filter: blur(36px) saturate(1.5); filter: blur(36px) saturate(1.5);
+    -webkit-transition: opacity 500ms ease; transition: opacity 500ms ease; }
+  #immBg.shown { opacity: .6; }
+  #immShade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(0,0,0,.55)); }
+  #imm .m-title { font-size: 21px; line-height: 25px; max-height: 50px; }
+  #imm .m-artist { font-size: 14px; }
+  .bigtime { position: absolute; text-align: right; }
+  .bigtime b { display: block; font-weight: 600; line-height: 1; }
+  .bigtime span { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.75); margin-top: 7px; text-transform: uppercase; letter-spacing: .6px; }
+  .pill { position: absolute; height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 14px; line-height: 44px; white-space: nowrap; overflow: hidden;
+    background: rgba(255,255,255,.13); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18); }
+  .pill span { font-size: 12px; color: rgba(255,255,255,.72); }
+  .pill b { float: right; font-weight: 600; }
+  .pill svg { vertical-align: -2px; margin-left: 8px; }
 
-  /* Batteries: icon + percentage chips */
-  #batList { position: absolute; left: 14px; right: 14px; top: 38px; }
-  .chip { float: left; width: 50%; height: 30px; position: relative; box-sizing: border-box; }
-  .chip svg { position: absolute; left: 0; top: 7px; width: 16px; height: 16px; }
-  .chip b { position: absolute; left: 22px; top: 6px; font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -.3px;
-    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
-  .chip b.mid { color: #ffd60a; }
-  .chip b.low { color: #ff453a; }
-  .chip b.chg { color: #30d158; }
-  .empty-note { font-size: 12px; color: #636366; }
+  /* ---- page 2 · Cluster: an instrument panel, the clock is the hero ---- */
+  .dial { position: absolute; text-align: center; }
+  .dial svg { position: absolute; left: 0; top: 0; }
+  .dial .dv { position: absolute; left: 0; right: 0; }
+  .dial b { display: block; font-size: 30px; letter-spacing: -1px; line-height: 1; }
+  .dial small { display: block; font-size: 10px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: .6px; margin-top: 5px; }
+  .dial em { display: block; font-style: normal; font-size: 10px; color: #aeaeb2; margin-top: 4px; white-space: nowrap; }
+  .ring { -webkit-transition: stroke-dasharray 600ms cubic-bezier(.23,1,.32,1); transition: stroke-dasharray 600ms cubic-bezier(.23,1,.32,1); }
+  #cluHero { position: absolute; text-align: center; }
+  #cluHero b { display: block; font-weight: 200; letter-spacing: -3px; line-height: 1; }
+  #cluHero span { display: block; font-size: 12px; font-weight: 600; color: #aeaeb2; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+  #strip { position: absolute; border-radius: 18px; background: #1c1c1e; overflow: hidden; }
+  #strip .m-title { font-size: 14px; line-height: 18px; max-height: 18px; margin-top: 3px; white-space: nowrap; text-overflow: ellipsis; }
+  #strip .m-artist { font-size: 12px; color: #aeaeb2; }
 
-  /* ---- app grid ---- */
+  /* ---- page 3 · app grid ---- */
   .app { position: absolute; text-align: center; }
   .ic { position: relative; margin: 0 auto; }
   /* macOS icons draw their squircle at ~80% of the canvas; scale up so they match Take note / Phone. */
@@ -150,7 +150,7 @@
   .note-ic svg, .phone-ic svg { position: absolute; left: 50%; top: 50%; }
   #hint { position: absolute; font-size: 10px; color: #48484a; text-align: center; }
 
-  /* ---- Phone app (modern iPhones) ---- */
+  /* ---- page 4 · Phone (modern iPhones) ---- */
   #pvBox { position: absolute; border-radius: 16px; overflow: hidden; background: #1c1c1e; }
   #pv { width: 100%; height: 100%; object-fit: cover; display: block; }
   #pvOff { position: absolute; left: 0; right: 0; top: 50%; margin-top: -8px; text-align: center; color: #636366; font-size: 12px; }
@@ -216,17 +216,17 @@
     -webkit-transition: opacity 300ms ease, -webkit-transform 300ms ease; transition: opacity 300ms ease, transform 300ms ease; }
   #toast.on { opacity: 1; -webkit-transform: translate(-50%, 0); transform: translate(-50%, 0); }
 
-  /* First load only: tiles and icons rise in with a short stagger (delays set from JS). */
+  /* First load only: the visible page's pieces rise in with a short stagger (delays set from JS). */
   @-webkit-keyframes rise { from { opacity: 0; -webkit-transform: translateY(8px); } to { opacity: 1; -webkit-transform: none; } }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .boot .tile, .boot .app, .boot .ricon { -webkit-animation: rise 420ms cubic-bezier(.23,1,.32,1) both; animation: rise 420ms cubic-bezier(.23,1,.32,1) both; }
+  .rise { -webkit-animation: rise 420ms cubic-bezier(.23,1,.32,1) both; animation: rise 420ms cubic-bezier(.23,1,.32,1) both; }
 
   /* Reduced motion: keep the fades that explain state, drop movement and scaling. */
   @media (prefers-reduced-motion: reduce) {
-    .view, .view.on, .sheet, .scrim.on .sheet, .press.down, .app.down .ic, .rhome svg, #mPlay svg { -webkit-transform: none !important; transform: none !important; }
+    .sheet, .scrim.on .sheet, .press.down, .app.down .ic, .m-play svg, .m-prog.scrub { -webkit-transform: none !important; transform: none !important; }
     #toast, #toast.on { -webkit-transform: translate(-50%, 0); transform: translate(-50%, 0); }
-    .boot .tile, .boot .app, .boot .ricon { -webkit-animation: none; animation: none; }
-    #mProg i { -webkit-transition: none; transition: none; }
+    .rise { -webkit-animation: none; animation: none; }
+    .m-prog i, #track.settle, #rail.settle { -webkit-transition: none; transition: none; }
   }
   #login .sheet { top: 40px; text-align: center; }
   #code { width: 70%; height: 32px; border: 0; border-radius: 9px; background: #2c2c2e; color: #fff; text-align: center; font-size: 16px; }
@@ -237,56 +237,60 @@
 <div id="stage">
   <div id="toast"></div>
 
-  <div id="rail">
-    <div id="rClock"><span id="time">–</span><span id="link"></span></div>
-    <div id="rDock"></div>
-    <div class="rhome press" id="rHome"></div>
-  </div>
-
-  <!-- Dashboard: now playing + Internet + Batteries -->
-  <div id="dash" class="view">
-    <div id="music" class="tile">
-      <div id="mNote">♪</div><img id="mArt" alt="">
-      <div id="mInfo"><div id="mApp">Now Playing</div><div id="mTitle">Nothing playing</div><div id="mArtist">Spotify or Apple Music</div></div>
-      <div id="mProg"><i id="mProgFill"></i></div>
-      <div id="mTimes"><span id="mLeft"></span><b id="mPos"></b></div>
-      <div id="mHit"></div>
-      <div id="mBtns">
-        <div class="mb press" id="mPrev"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg></div>
-        <div class="mb press" id="mPlay"></div>
-        <div class="mb press" id="mNext"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M2 2l12 8-12 8zM16 2l12 8-12 8z" fill="#fff"/></svg></div>
+  <div id="track">
+    <!-- Page 1 · Immersive -->
+    <div class="page" id="pImm">
+      <div id="imm">
+        <img id="immBg" alt=""><div id="immShade"></div>
+        <div class="m-note">♪</div><img class="m-art" alt="">
+        <div class="m-meta"><div class="m-app">Now Playing</div><div class="m-title">Nothing playing</div><div class="m-artist">Spotify or Apple Music</div></div>
+        <div class="m-prog"><i></i></div><div class="m-times tnum"><span class="m-left"></span><b class="m-pos"></b></div><div class="m-hit"></div>
+        <div class="m-btns"></div>
+        <div class="bigtime" id="immTime"><b class="tnum c-time"></b><span class="c-date"></span></div>
+        <div class="pill press n-tap" id="immNet"><span class="n-title">Internet</span><b class="tnum">↓ <span class="n-down">–</span> Mbps</b></div>
+        <div class="pill" id="immBat"><span>Batteries</span><b class="tnum b-line"></b></div>
       </div>
     </div>
-    <div id="net" class="tile press">
-      <h3 id="netTitle">Internet</h3>
-      <div class="big" id="netBig"><span class="arrow">↓</span> <span id="down">–</span><small>Mbps</small></div>
-      <div class="sub" id="netSub"><span class="arrow up">↑</span> <span id="up">–</span> Mbps · <span id="ping">–</span> ms</div>
-      <canvas id="spark" width="208" height="36"></canvas>
+    <!-- Page 2 · Cluster -->
+    <div class="page" id="pClu">
+      <div class="dial press n-tap" id="cluNet"><svg class="n-ring"></svg><div class="dv"><b class="tnum n-down">–</b><small class="n-title">Mbit/s ↓</small><em class="tnum">↑ <span class="n-up">–</span> · <span class="n-ping">–</span> ms</em></div></div>
+      <div id="cluHero"><b class="tnum c-time"></b><span class="c-date"></span></div>
+      <div class="dial" id="cluBat"><svg class="b-ring"></svg><div class="dv"><b class="tnum b-main">–</b><small class="b-name">Battery</small><em class="tnum b-rest"></em></div></div>
+      <div id="strip">
+        <div class="m-note">♪</div><img class="m-art" alt="">
+        <div class="m-meta"><div class="m-app">Now Playing</div><div class="m-title">Nothing playing</div><div class="m-artist">Spotify or Apple Music</div></div>
+        <div class="m-prog"><i></i></div><div class="m-times tnum"><span class="m-left"></span><b class="m-pos"></b></div><div class="m-hit"></div>
+        <div class="m-btns"></div>
+      </div>
     </div>
-    <div id="bat" class="tile"><h3>Batteries</h3><div id="batList"></div></div>
+    <!-- Page 3 · the chosen apps, Take note, and Phone -->
+    <div class="page" id="pApps">
+      <div id="grid"></div>
+      <div id="hint">Hold an icon to choose apps · swipe in from the left for the rail</div>
+    </div>
+    <!-- Page 4 · Phone, modern iPhones only: camera + mic to the Mac (needs HTTPS) -->
+    <div class="page" id="pPhone">
+      <div id="pvBox"><video id="pv" playsinline muted autoplay></video><div id="pvOff">Camera off</div></div>
+      <div id="pCtl">
+        <div class="pbtn press" id="pCam"><b>Camera</b><span>Off</span></div>
+        <div class="pbtn press" id="pMic"><b>Microphone</b><span>Off</span></div>
+        <div class="pbtn small press" id="pFlip"><b>Flip camera</b></div>
+        <div id="pNote"></div>
+      </div>
+      <div id="pSetup">
+        <h2>One-time setup for camera &amp; mic</h2>
+        <p>1. <a href="/oldphonedeck.mobileconfig">Download the OldPhoneDeck profile</a>, tap <b>Allow</b>, then Settings → <b>Profile Downloaded</b> → Install.</p>
+        <p>2. Settings → General → About → <b>Certificate Trust Settings</b> → turn on OldPhoneDeck CA.</p>
+        <p>3. Open the <a id="httpsLink" href="#">secure deck</a>, then Share → Add to Home Screen.</p>
+      </div>
+    </div>
   </div>
+  <div id="dots"></div>
 
-  <!-- Home screen: the chosen apps, Take note, and Phone -->
-  <div id="apps" class="view">
-    <div id="grid"></div>
-    <div id="hint">Hold an icon to choose apps</div>
-  </div>
-
-  <!-- Modern iPhones only: camera + mic to the Mac (needs HTTPS) -->
-  <div id="phone" class="view">
-    <div id="pvBox"><video id="pv" playsinline muted autoplay></video><div id="pvOff">Camera off</div></div>
-    <div id="pCtl">
-      <div class="pbtn press" id="pCam"><b>Camera</b><span>Off</span></div>
-      <div class="pbtn press" id="pMic"><b>Microphone</b><span>Off</span></div>
-      <div class="pbtn small press" id="pFlip"><b>Flip camera</b></div>
-      <div id="pNote"></div>
-    </div>
-    <div id="pSetup">
-      <h2>One-time setup for camera &amp; mic</h2>
-      <p>1. <a href="/oldphonedeck.mobileconfig">Download the OldPhoneDeck profile</a>, tap <b>Allow</b>, then Settings → <b>Profile Downloaded</b> → Install.</p>
-      <p>2. Settings → General → About → <b>Certificate Trust Settings</b> → turn on OldPhoneDeck CA.</p>
-      <p>3. Open the <a id="httpsLink" href="#">secure deck</a>, then Share → Add to Home Screen.</p>
-    </div>
+  <div id="railScrim"></div>
+  <div id="rail">
+    <div id="rClock"><span id="time" class="tnum">–</span><span id="link"></span></div>
+    <div id="rDock"></div>
   </div>
 
   <!-- Take note -->
@@ -325,6 +329,10 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
+  // Run fn on every element with this class (NodeList.forEach is too new for iOS 9).
+  function each(cls, fn) { [].forEach.call(document.getElementsByClassName(cls), fn); }
+  function setText(cls, text) { each(cls, function (e) { e.textContent = text; }); }
+  function within(el, ancestor) { while (el) { if (el === ancestor) return true; el = el.parentNode; } return false; }
   var APP_SLOTS = 7;   // home screen: 7 apps + Take note (+ Phone on modern iPhones)
   var modern = 'isSecureContext' in window;   // iOS 11.1+; the 4S is never "modern"
 
@@ -347,7 +355,7 @@
     clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = ''; }, 1900);
   }
   // Tap handler: instant on touch (no 300 ms delay), works with a mouse too, shows a pressed state.
-  // A finger that drifts less than 10pt still counts as a tap; more than that is a scroll (the rail scrolls).
+  // A finger that drifts less than 10pt still counts as a tap; more than that is a swipe or a scroll.
   function tap(el, fn, hold) {
     var moved, held, timer, x0, y0;
     el.addEventListener('touchstart', function (e) {
@@ -367,83 +375,134 @@
     function unpress() { el.className = el.className.replace(/ down/g, ''); }
   }
   function px(el, props) { for (var k in props) el.style[k] = props[k] + 'px'; }
+  function translateX(el, x) { el.style.webkitTransform = el.style.transform = 'translate3d(' + x + 'px,0,0)'; }
 
   // ---------- layout ----------
   // Landscape: the stage is 320pt tall and as wide as the screen's shape (480 on a 4S, ~700 on an iPhone 17).
-  // A rail on the left (time, Take note + apps, home button); the dashboard or app grid fills the rest.
-  // Portrait (modern phones held upright): 360pt wide, the rail becomes a bar along the bottom.
+  // Portrait (modern phones held upright): 360pt wide. Each page fills the stage; dots sit along the bottom.
   // The stage sits inside the safe area; the page background fills the rest of the screen.
-  var W = 480, H = 320, portrait = false, RAIL = 78, BAR = 82;
-  var main = { x: 0, y: 0, w: 0, h: 0 };
+  var W = 480, H = 320, S = 1, portrait = false;
+  var main = { x: 10, y: 10, w: 460, h: 286 };   // content box inside every page
   function insets() {
     var cs = window.getComputedStyle($('safe'));
     return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0,
              b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
   }
+  var fitFor = '';
   function fit() {
     var iw = window.innerWidth, ih = window.innerHeight, ins = insets();
+    fitFor = iw + 'x' + ih;
     var aw = iw - ins.l - ins.r, ah = ih - ins.t - ins.b;
     portrait = modern && ah > aw * 1.2;
     if (portrait) { W = 360; H = Math.max(520, Math.round(360 * ah / aw)); }
     else { H = 320; W = Math.max(480, Math.min(760, Math.round(320 * aw / ah))); }
-    var s = Math.min(aw / W, ah / H), st = $('stage');
+    S = Math.min(aw / W, ah / H);
+    var st = $('stage');
     st.style.width = W + 'px'; st.style.height = H + 'px';
-    st.style.webkitTransform = st.style.transform = 'scale(' + s + ')';
-    st.style.left = ins.l + (aw - W * s) / 2 + 'px';
-    st.style.top = ins.t + (ah - H * s) / 2 + 'px';
+    st.style.webkitTransform = st.style.transform = 'scale(' + S + ')';
+    st.style.left = ins.l + (aw - W * S) / 2 + 'px';
+    st.style.top = ins.t + (ah - H * S) / 2 + 'px';
     layout();
   }
   function layout() {
-    var rail = $('rail');
-    if (portrait) {
-      rail.className = 'bar';
-      px(rail, { left: 0, top: H - BAR, width: W, height: BAR });
-      main = { x: 12, y: 12, w: W - 24, h: H - BAR - 24 };
-    } else {
-      rail.className = '';
-      px(rail, { left: 0, top: 0, width: RAIL, height: H });
-      main = { x: RAIL + 10, y: 10, w: W - RAIL - 20, h: H - 20 };
-    }
-    $('toast').style.left = main.x + main.w / 2 + 'px';
-    layoutDash(); layoutGrid(); layoutPhone(); renderDock();
+    main = { x: 10, y: 10, w: W - 20, h: H - 30 };
+    pages.forEach(function (p, i) { px($(p.id), { left: i * W, width: W }); });
+    px($('track'), { width: W * pages.length });
+    goPage(page, false);
+    $('toast').style.left = W / 2 + 'px';
+    layoutImm(); layoutClu(); layoutGrid(); layoutPhone();
   }
-  function layoutDash() {
-    var mu = $('music'), net = $('net'), bat = $('bat'), muW, muH, colX, colY, colW, netH, batH;
-    if (portrait) {
-      // One stack, vertically centred: now playing on top, the two small tiles side by side below.
-      muW = main.w; muH = Math.min(280, Math.round(main.h * 0.55));
-      netH = batH = Math.min(170, main.h - muH - 10);
-      var y0 = main.y + Math.max(0, Math.round((main.h - muH - 10 - netH) / 2));
-      colW = (main.w - 10) / 2; colY = y0 + muH + 10;
-      px(mu, { left: main.x, top: y0, width: muW, height: muH });
-      px(net, { left: main.x, top: colY, width: colW, height: netH });
-      px(bat, { left: main.x + colW + 10, top: colY, width: colW, height: batH });
+  // Now playing block inside a box: artwork, meta beside it, scrub bar and transport.
+  function placeNp(box, x, y, w, h, art, transport) {
+    var q = function (cls) { return box.getElementsByClassName(cls)[0]; };
+    px(q('m-art'), { left: x, top: y, width: art, height: art });
+    px(q('m-note'), { left: x, top: y, width: art, height: art, lineHeight: art, fontSize: Math.round(art / 2.4) });
+    return { q: q };
+  }
+  function layoutImm() {
+    var b = $('imm'), w = main.w, h = main.h;
+    px(b, { left: main.x, top: main.y, width: w, height: h });
+    var q = function (cls) { return b.getElementsByClassName(cls)[0]; };
+    var npW, a, sideX, sideW, sideTop;
+    if (portrait) { npW = w - 36; a = Math.min(150, Math.round(w * 0.42)); }
+    else { npW = Math.round(w * 0.56); a = Math.max(72, Math.min(Math.round(h * 0.46), Math.round(npW * 0.45))); }
+    placeNp(b, 18, 18, npW, h, a);
+    px(q('m-meta'), { left: 18 + a + 16, bottom: h - 18 - a, width: npW - a - 34 });
+    var npBottom = portrait ? Math.round(h * 0.58) : h;
+    var progTop = npBottom - 18 - 46 - 30;
+    px(q('m-prog'), { left: 18, top: progTop, width: npW - 18 });
+    px(q('m-times'), { left: 18, top: progTop + 9, width: npW - 18 });
+    px(q('m-hit'), { left: 10, top: progTop - 18, width: npW - 2, height: 46 });
+    px(q('m-btns'), { left: 18, top: npBottom - 14 - 46, width: npW - 18 });
+    if (portrait) { sideX = 18; sideW = w - 36; sideTop = npBottom + 6; }
+    else { sideX = npW + 28; sideW = w - npW - 46; sideTop = 18; }
+    var pillsTop = h - 18 - 44 * 2 - 8;
+    var t = $('immTime'), fs = Math.max(40, Math.min(68, Math.round(sideW / 2.9)));
+    t.firstChild.style.fontSize = fs + 'px'; t.firstChild.style.letterSpacing = -Math.round(fs / 22) + 'px';
+    px(t, { left: sideX, width: sideW, top: sideTop + Math.max(0, Math.round((pillsTop - sideTop - fs - 24) / 2)) });
+    px($('immNet'), { left: sideX, width: sideW, top: pillsTop });
+    px($('immBat'), { left: sideX, width: sideW, top: pillsTop + 52 });
+  }
+  function layoutClu() {
+    var w = main.w, h = main.h, stripH = portrait ? 150 : 92;
+    var st = $('strip'), q = function (cls) { return st.getElementsByClassName(cls)[0]; };
+    px(st, { left: main.x, top: main.y + h - stripH, width: w, height: stripH });
+    var rowH = h - stripH - 10, d = Math.max(110, Math.min(156, rowH - 16, Math.round(w / 4.4)));
+    var heroTop, dialTop;
+    if (portrait) {   // hero clock on top, the two dials side by side under it
+      heroTop = main.y + 26; dialTop = main.y + rowH - d - 6;
+      d = Math.min(d, Math.round((w - 30) / 2));
+      px($('cluNet'), { left: main.x + Math.round(w / 4 - d / 2), top: dialTop, width: d, height: d });
+      px($('cluBat'), { left: main.x + Math.round(3 * w / 4 - d / 2), top: dialTop, width: d, height: d });
+      px($('cluHero'), { left: main.x, width: w, top: heroTop });
     } else {
-      muW = Math.round(main.w * 0.56); muH = main.h;
-      colX = main.x + muW + 10; colW = main.w - muW - 10;
-      netH = Math.round((main.h - 10) / 2); batH = main.h - netH - 10;
-      px(mu, { left: main.x, top: main.y, width: muW, height: muH });
-      px(net, { left: colX, top: main.y, width: colW, height: netH });
-      px(bat, { left: colX, top: main.y + netH + 10, width: colW, height: batH });
+      dialTop = main.y + Math.round((rowH - d) / 2);
+      px($('cluNet'), { left: main.x + 6, top: dialTop, width: d, height: d });
+      px($('cluBat'), { left: main.x + w - d - 6, top: dialTop, width: d, height: d });
+      px($('cluHero'), { left: main.x + d + 12, width: w - 2 * d - 24, top: dialTop + Math.round(d / 2) - 44 });
     }
-    // Now playing: artwork top-left, title beside it, progress and transport along the bottom.
-    var a = Math.max(56, Math.min(Math.round(muW * 0.42), muH - 132));
-    px($('mArt'), { left: 14, top: 14, width: a, height: a });
-    px($('mNote'), { left: 14, top: 14, width: a, height: a, lineHeight: a, fontSize: Math.round(a / 2.4) });
-    px($('mInfo'), { left: 14 + a + 14, top: 16, width: muW - a - 42 });
-    var progTop = 14 + a + Math.max(14, Math.round((muH - a - 14 - 70) / 2));
-    px($('mProg'), { left: 14, top: progTop, width: muW - 28 });
-    px($('mTimes'), { left: 14, top: progTop + 9, width: muW - 28 });
-    px($('mHit'), { left: 6, top: progTop - 18, width: muW - 12, height: 46 });   // generous touch target
-    px($('mBtns'), { left: 14, bottom: 10, width: muW - 28 });
-    // Internet: big number, details, and a live graph filling the rest.
-    px($('netBig'), { top: 34 }); px($('netSub'), { top: 70 });
-    var spark = $('spark'), sw = colW - 28, sh = Math.max(16, Math.min(64, netH - 104));
-    spark.width = sw * 2; spark.height = sh * 2;
-    px(spark, { width: sw, height: sh, top: netH - sh - 12 });
-    $('spark').style.display = netH >= 120 ? 'block' : 'none';
-    batteryRows = Math.max(1, Math.floor((batH - 44) / 30)) * 2;   // chips that fit, two per row
-    drawSpark(lastHistory); renderBatteries(lastBatteries);
+    var hb = $('cluHero').firstChild, fs = portrait ? 84 : Math.max(52, Math.min(80, Math.round((w - 2 * d - 24) / 3)));
+    hb.style.fontSize = fs + 'px';
+    [$('cluNet'), $('cluBat')].forEach(function (dial) {
+      var dv = dial.getElementsByClassName('dv')[0];
+      px(dv, { top: Math.round(d / 2) - 22 });
+      drawRing(dial.getElementsByTagName('svg')[0], d, dial.ringF || 0, dial.id === 'cluNet' ? '#64d2ff' : dial.ringColor || '#30d158');
+    });
+    // Strip: artwork, meta, scrub bar, transport (stacked in portrait).
+    var a = portrait ? 64 : 64, ctlW = 168;
+    placeNp(st, 14, portrait ? 14 : 14, 0, 0, a);
+    if (portrait) {
+      px(q('m-meta'), { left: 14 + a + 14, top: 18, width: w - a - 42 });
+      px(q('m-prog'), { left: 14, top: 98, width: w - 28 });
+      px(q('m-times'), { left: 14, top: 107, width: w - 28 });
+      px(q('m-hit'), { left: 6, top: 80, width: w - 12, height: 40 });
+      px(q('m-btns'), { left: w - ctlW - 6, top: 16, width: ctlW });
+      q('m-meta').style.width = (w - a - 42 - ctlW) + 'px';
+    } else {
+      var metaW = Math.min(170, Math.round(w * 0.24)), barX = 14 + a + 14 + metaW + 12, barW = w - barX - ctlW - 14;
+      px(q('m-meta'), { left: 14 + a + 14, top: 20, width: metaW });
+      px(q('m-prog'), { left: barX, top: 38, width: barW });
+      px(q('m-times'), { left: barX, top: 47, width: barW });
+      px(q('m-hit'), { left: barX - 8, top: 18, width: barW + 16, height: 46 });
+      px(q('m-btns'), { left: w - ctlW - 6, top: 23, width: ctlW });
+    }
+  }
+  // An arc gauge: 270° sweep, value 0..1. Re-drawn on layout and when the value changes (the stroke animates).
+  function drawRing(svg, size, f, color) {
+    var stroke = 7, r = 50 - stroke / 2 - 1, c = 2 * Math.PI * r, sweep = 0.75;
+    svg.setAttribute('width', size); svg.setAttribute('height', size); svg.setAttribute('viewBox', '0 0 100 100');
+    if (!svg.firstChild) {
+      svg.innerHTML = '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="' + stroke + '" stroke-linecap="round" transform="rotate(135 50 50)"/>' +
+        '<circle class="ring" cx="50" cy="50" r="' + r + '" fill="none" stroke-width="' + stroke + '" stroke-linecap="round" transform="rotate(135 50 50)"/>';
+    }
+    svg.firstChild.setAttribute('stroke-dasharray', c * sweep + ' ' + c);
+    svg.lastChild.setAttribute('stroke', color);
+    svg.lastChild.setAttribute('stroke-dasharray', Math.max(0.001, c * sweep * f) + ' ' + c);
+  }
+  function setRing(dial, f, color) {
+    dial.ringF = f; if (color) dial.ringColor = color;
+    var svg = dial.getElementsByTagName('svg')[0];
+    drawRing(svg, parseFloat(svg.getAttribute('width')) || 150, f, color || '#64d2ff');
   }
   function layoutPhone() {
     if (portrait) {
@@ -458,38 +517,116 @@
     px($('pSetup'), { left: main.x, top: main.y, width: main.w });
   }
   window.addEventListener('resize', fit);
+  // iOS Safari sometimes settles the viewport after load (or when its bars change) without firing resize; poll it.
+  setInterval(function () { if (innerWidth + 'x' + innerHeight !== fitFor) fit(); }, 500);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
 
-  // ---------- views: dashboard, home screen, Phone ----------
-  var view = 'dash';
-  var DASH_SVG = '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="1" y="1" width="13" height="22" rx="3" fill="#fff"/>' +
-    '<rect x="16" y="1" width="7" height="10" rx="2.5" fill="#fff"/><rect x="16" y="13" width="7" height="10" rx="2.5" fill="#fff"/></svg>';
-  var GRID_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">' +
-    '<rect x="1" y="1" width="6" height="6" rx="1.8"/><rect x="9" y="1" width="6" height="6" rx="1.8"/><rect x="17" y="1" width="6" height="6" rx="1.8"/>' +
-    '<rect x="1" y="9" width="6" height="6" rx="1.8"/><rect x="9" y="9" width="6" height="6" rx="1.8"/><rect x="17" y="9" width="6" height="6" rx="1.8"/>' +
-    '<rect x="1" y="17" width="6" height="6" rx="1.8"/><rect x="9" y="17" width="6" height="6" rx="1.8"/><rect x="17" y="17" width="6" height="6" rx="1.8"/></svg>';
-  function show(name) {
-    view = name;
-    $('dash').className = 'view' + (name === 'dash' ? ' on' : '');
-    $('apps').className = 'view' + (name === 'apps' ? ' on' : '');
-    $('phone').className = 'view' + (name === 'phone' ? ' on' : '');
-    // The home button flips between the home screen and the dashboard (from Phone it goes home).
-    $('rHome').className = 'rhome press' + (name === 'apps' ? ' dash' : '');
-    if (name === 'phone') phoneEnter(); else pollStats();
-    store('view', name);
+  // ---------- pages ----------
+  var pages = [{ id: 'pImm', name: 'dash' }, { id: 'pClu', name: 'cluster' }, { id: 'pApps', name: 'apps' }];
+  if (modern) pages.push({ id: 'pPhone', name: 'phone' }); else $('track').removeChild($('pPhone'));
+  var page = 0, view = 'dash';
+  (function () { var h = ''; for (var i = 0; i < pages.length; i++) h += '<i></i>'; $('dots').innerHTML = h; })();
+  function goPage(i, animate) {
+    page = Math.max(0, Math.min(pages.length - 1, i));
+    var tr = $('track');
+    tr.className = animate === false ? '' : 'settle';
+    translateX(tr, -page * W);
+    [].forEach.call($('dots').children, function (d, j) { d.className = j === page ? 'on' : ''; });
+    var was = view;
+    view = pages[page].name;
+    store('view', view);
+    if (view !== was) { if (view === 'phone') phoneEnter(); else pollStats(); }
   }
-  $('rHome').innerHTML = GRID_SVG.replace('<svg', '<svg class="g-grid"') + DASH_SVG.replace('<svg', '<svg class="g-dash"');
-  tap($('rHome'), function () { show(view === 'apps' ? 'dash' : 'apps'); });
+  function show(name) { for (var i = 0; i < pages.length; i++) if (pages[i].name === name) goPage(i); }
   function sheet(id, on) { $(id).className = 'scrim' + (on ? ' on' : ''); }
-  window.deckHome = function () { sheet('claude', false); sheet('edit', false); show('dash'); };
+  window.deckHome = function () { sheet('claude', false); sheet('edit', false); railTo(false); goPage(0); };
+
+  // ---------- rail drawer ----------
+  var RAILW = 84, railOpen = false;
+  function railPos(x, animate) {   // x: 0 = open, -RAILW = closed
+    var r = $('rail'), sc = $('railScrim');
+    r.className = sc.className = animate ? 'settle' : '';
+    if (x > -RAILW || animate) sc.className += ' show';   // stays visible while it fades out
+    translateX(r, x);
+    sc.style.opacity = 0.45 * (1 + x / RAILW);
+  }
+  function railTo(open) {
+    railOpen = open;
+    railPos(open ? 0 : -RAILW, true);
+    if (!open) setTimeout(function () { if (!railOpen) $('railScrim').className = 'settle'; }, 430);
+  }
+  tap($('railScrim'), function () { railTo(false); });
+
+  // ---------- one gesture manager for swipes: pages, and the rail from the left edge ----------
+  // Decides on the first 8pt of movement: horizontal → page swipe (or rail, from the edge / while open);
+  // vertical → left to the browser (the rail scrolls). Follows the finger 1:1; on release, a flick (velocity)
+  // or a drag past a third of the width decides, then a 420ms iOS-curve settle.
+  var g = null;
+  function gStart(e) {
+    if (e.touches.length > 1 || $('claude').className.indexOf('on') >= 0 || $('edit').className.indexOf('on') >= 0 ||
+        $('login').className.indexOf('on') >= 0) { g = null; return; }
+    var t = e.touches[0], sr = $('stage').getBoundingClientRect();
+    var onHit = false; each('m-hit', function (h) { if (within(e.target, h)) onHit = true; });
+    g = { x0: t.clientX, y0: t.clientY, x: t.clientX, t: Date.now(), vx: 0, mode: null, hit: onHit,
+          edge: !railOpen && t.clientX - sr.left < 26 * S };
+  }
+  function gMove(e) {
+    if (!g || g.hit) return;
+    var t = e.touches[0], dx = (t.clientX - g.x0) / S, dy = (t.clientY - g.y0) / S, now = Date.now();
+    g.vx = (t.clientX - g.x) / S / Math.max(1, now - g.t); g.x = t.clientX; g.t = now;
+    if (!g.mode) {
+      if (Math.abs(dx) + Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) { g.mode = 'none'; return; }
+      g.mode = g.edge || railOpen ? 'rail' : 'page';
+    }
+    if (g.mode === 'none') return;
+    e.preventDefault();
+    if (g.mode === 'rail') {
+      var base = railOpen ? 0 : -RAILW;
+      railPos(Math.min(0, Math.max(-RAILW, base + dx)), false);
+    } else {
+      // Rubber-band past the first and last page: the further you pull, the less it moves.
+      var x = -page * W + dx, min = -(pages.length - 1) * W;
+      if (x > 0) x = x * 0.3; else if (x < min) x = min + (x - min) * 0.3;
+      var tr = $('track'); tr.className = ''; translateX(tr, x);
+    }
+  }
+  function gEnd(e) {
+    if (!g || !g.mode || g.mode === 'none') { g = null; return; }
+    var dx = (g.x - g.x0) / S;
+    if (g.mode === 'rail') {
+      var pos = (railOpen ? 0 : -RAILW) + dx;
+      railTo(g.vx > 0.3 ? true : g.vx < -0.3 ? false : pos > -RAILW / 2);
+    } else {
+      var to = page;
+      if (dx < -W / 3 || g.vx < -0.3) to = page + 1;
+      else if (dx > W / 3 || g.vx > 0.3) to = page - 1;
+      goPage(to, true);
+    }
+    g = null;
+  }
+  document.addEventListener('touchstart', gStart, true);
+  document.addEventListener('touchmove', gMove, { passive: false, capture: true });
+  document.addEventListener('touchend', gEnd, true);
+  document.addEventListener('touchcancel', gEnd, true);
+  // Desktop testing: arrow keys flip pages, R toggles the rail.
+  document.addEventListener('keydown', function (e) {
+    if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.keyCode === 39) goPage(page + 1); else if (e.keyCode === 37) goPage(page - 1); else if (e.keyCode === 82) railTo(!railOpen);
+  });
 
   // ---------- clock ----------
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function hhmm(d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   function tick() {
     // 24-hour HH:mm, the same as the Mac's menu bar.
-    $('time').textContent = hhmm(new Date());
+    var d = new Date(), t = hhmm(d);
+    $('time').textContent = t;
+    setText('c-time', t);
+    setText('c-date', DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]);
   }
-  function hhmm(d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
-  setInterval(tick, 10000);
+  setInterval(tick, 5000);
 
   // ---------- apps ----------
   var launcher = { selected: null, all: [] };
@@ -567,24 +704,24 @@
       if (it.note) box.innerHTML = noteSvg(Math.round(ic * 0.6));
       if (it.phone) box.innerHTML = camSvg(Math.round(ic * 0.55));
     });
-    px($('hint'), { left: main.x, width: main.w, top: main.y + main.h - 14 });
+    px($('hint'), { left: main.x, width: main.w, top: main.y + main.h - 12 });
   }
 
   // Rail: Take note first, then every chosen app in the same order as the grid (stable, so the thumb learns it).
-  // Scrolls when they don't all fit.
+  // Scrolls when they don't all fit. Launching from the rail tucks it away again.
   function renderDock() {
     var dock = $('rDock');
     dock.innerHTML = '';
     var note = document.createElement('div');
     note.className = 'ricon press note-ic';
-    note.innerHTML = noteSvg(30);
-    tap(note, openClaude, takeNoteHold);
+    note.innerHTML = noteSvg(32);
+    tap(note, function () { railTo(false); openClaude(); }, takeNoteHold);
     dock.appendChild(note);
     chosenApps().forEach(function (a) {
       var el = document.createElement('div');
       el.className = 'ricon press';
       el.innerHTML = iconImg(a);
-      tap(el, function () { launch(a); }, openEditor);
+      tap(el, function () { launch(a); railTo(false); }, openEditor);
       dock.appendChild(el);
     });
   }
@@ -594,6 +731,7 @@
   function openEditor() {
     draft = (launcher.selected || []).slice(0, APP_SLOTS);
     $('filter').value = '';
+    railTo(false);
     sheet('edit', true);
     renderEditor();
   }
@@ -680,30 +818,8 @@
   tap($('askCancel'), function () { if (rec) rec.abort(); ask.blur(); sheet('claude', false); });
   tap($('askSend'), sendAsk);
 
-  // ---------- widgets ----------
+  // ---------- widgets: Internet and batteries ----------
   function fmt(n) { return n >= 100 ? Math.round(n) : n >= 10 ? n.toFixed(0) : n.toFixed(1); }
-  function ago(ms) {
-    var s = Math.round((Date.now() - ms) / 1000);
-    return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : Math.round(s / 3600) + ' h ago';
-  }
-  var lastHistory = [];
-  function drawSpark(hist) {
-    lastHistory = hist || [];
-    var c = $('spark'), g = c.getContext('2d'), w = c.width, h = c.height;
-    g.clearRect(0, 0, w, h);
-    if (lastHistory.length < 2) return;
-    var max = 1; lastHistory.forEach(function (v) { if (v > max) max = v; });
-    g.beginPath();
-    lastHistory.forEach(function (v, i) {
-      var x = i * w / (lastHistory.length - 1), y = h - 3 - (v / max) * (h - 6);
-      if (i) g.lineTo(x, y); else g.moveTo(x, y);
-    });
-    g.strokeStyle = '#64d2ff'; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke();
-    g.lineTo(w, h); g.lineTo(0, h); g.closePath();
-    var grad = g.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(100,210,255,.35)'); grad.addColorStop(1, 'rgba(100,210,255,0)');
-    g.fillStyle = grad; g.fill();
-  }
   // Small line icons per device kind, drawn like SF Symbols.
   var ICONS = {
     phone: '<rect x="4" y="1" width="6" height="12" rx="1.6"/><path d="M6.3 11h1.4"/>',
@@ -715,39 +831,47 @@
     headphones: '<path d="M2.2 9V7.2a4.8 4.8 0 0 1 9.6 0V9"/><rect x="1.5" y="8.5" width="2.6" height="4" rx="1"/><rect x="9.9" y="8.5" width="2.6" height="4" rx="1"/>'
   };
   function icon(kind) {
-    return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#aeaeb2" stroke-width="1.2" stroke-linecap="round">' +
+    return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.2" stroke-linecap="round">' +
       (ICONS[kind] || ICONS.keyboard) + '</svg>';
   }
-  var phone = null, batteryRows = 4;   // phone: the device's own battery, when the browser exposes it
+  var phone = null;   // the device's own battery, when the browser exposes it
   window.deckPhone = function (s) { phone = s; renderBatteries(lastBatteries); };
-  // Modern Safari can read its own battery via the Battery API where available; harmless elsewhere.
   if (navigator.getBattery) navigator.getBattery().then(function (b) {
     function upd() { window.deckPhone({ level: b.level, charging: b.charging }); }
     upd(); b.addEventListener('levelchange', upd); b.addEventListener('chargingchange', upd);
   });
   var lastBatteries = [];
+  function batColor(b) { return b.charging ? '#30d158' : b.level <= 20 ? '#ff453a' : b.level <= 40 ? '#ffd60a' : '#30d158'; }
   function renderBatteries(list) {
     lastBatteries = list || [];
     var rows = lastBatteries.slice();
-    if (phone) rows.unshift({ name: 'iPhone', kind: 'phone', level: Math.round(phone.level * 100), charging: phone.charging });
-    var box = $('batList');
-    if (!rows.length) { box.innerHTML = '<div class="empty-note">No devices reporting</div>'; return; }
-    box.innerHTML = '';
+    if (phone) rows.push({ name: 'iPhone', kind: 'phone', level: Math.round(phone.level * 100), charging: phone.charging });
     var chips = [];
     rows.forEach(function (b) {
-      chips.push({ kind: b.kind, level: b.level, charging: b.charging, name: b.name });
+      chips.push(b);
       if (b['case'] !== undefined) chips.push({ kind: 'case', level: b['case'], name: b.name + ' case' });
     });
-    chips.slice(0, batteryRows).forEach(function (b) {
-      var c = document.createElement('div');
-      c.className = 'chip';
-      c.title = b.name;
-      c.innerHTML = icon(b.kind) + '<b></b>';
-      var t = c.lastChild;
-      t.textContent = b.level + '%';
-      t.className = b.charging ? 'chg' : b.level <= 20 ? 'low' : b.level <= 40 ? 'mid' : '';
-      box.appendChild(c);
-    });
+    // Immersive pill: an icon + percentage per device. Cluster: the first device as the dial, the rest underneath.
+    var line = '';
+    chips.slice(0, 4).forEach(function (b) { line += icon(b.kind) + ' ' + b.level + '%'; });
+    each('b-line', function (e) { e.innerHTML = chips.length ? line : 'No devices'; });
+    var first = chips[0];
+    setText('b-main', first ? first.level + '%' : '–');
+    setText('b-name', first ? first.name : 'Batteries');
+    setText('b-rest', chips.slice(1, 3).map(function (b) { return b.name + ' ' + b.level + '%'; }).join(' · '));
+    setRing($('cluBat'), first ? first.level / 100 : 0, first ? batColor(first) : '#30d158');
+  }
+  var testing = false;
+  function renderNet(sp) {
+    testing = !!sp.running;
+    setText('n-down', sp.down !== undefined && !testing ? fmt(sp.down) : '–');
+    setText('n-up', sp.up !== undefined ? fmt(sp.up) : '–');
+    setText('n-ping', sp.ping !== undefined ? Math.round(sp.ping) : '–');
+    $('immNet').firstChild.textContent = testing ? 'Testing…' : 'Internet';
+    $('cluNet').getElementsByTagName('small')[0].textContent = testing ? 'Testing…' : 'Mbit/s ↓';
+    // Gauge scale steps up with the connection, so a fast line doesn't pin the needle.
+    var down = testing ? 0 : sp.down || 0, scale = [50, 100, 250, 500, 1000, 10000].filter(function (s) { return s >= down; })[0];
+    setRing($('cluNet'), down / scale, '#64d2ff');
   }
   function pollStats() {
     if (view === 'phone') return;
@@ -755,35 +879,40 @@
       $('link').className = s === 200 ? 'ok' : '';
       if (s !== 200) return;
       var d = JSON.parse(text);
-      var sp = d.speed || {};
-      $('down').textContent = sp.down !== undefined ? fmt(sp.down) : '–';
-      $('up').textContent = sp.up !== undefined ? fmt(sp.up) : '–';
-      $('ping').textContent = sp.ping !== undefined ? Math.round(sp.ping) : '–';
-      $('netTitle').innerHTML = sp.running ? 'Testing… ' : 'Internet <i>· ' + (sp.at ? ago(sp.at) : 'tap to test') + '</i>';
-      drawSpark(d.net.history);
+      renderNet(d.speed || {});
       renderBatteries(d.batteries);
       renderMusic(d.music);
     });
   }
   setInterval(pollStats, 2000);
-  tap($('net'), function () {
-    xhr('POST', url('/speedtest'), '', function () { $('netTitle').textContent = 'Testing…'; toast('Running a speed test (~20 s)'); });
+  each('n-tap', function (el) {
+    tap(el, function () {
+      if (testing) return;
+      xhr('POST', url('/speedtest'), '', function () { renderNet({ running: true }); toast('Running a speed test (~20 s)'); });
+    });
   });
 
-  // ---------- now playing (Spotify / Apple Music on the Mac) ----------
+  // ---------- now playing (Spotify / Apple Music on the Mac), shown on both dashboard pages ----------
+  var PREV = '<svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg>';
+  var NEXT = '<svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M2 2l12 8-12 8zM16 2l12 8-12 8z" fill="#fff"/></svg>';
   var PLAY = '<svg class="i-play" width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -13px"><path d="M6 3v24l21-12z" fill="#fff"/></svg>';
   var PAUSE = '<svg class="i-pause" width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -15px"><path d="M6 3h6.5v24H6zM17.5 3H24v24h-6.5z" fill="#fff"/></svg>';
   var track = { playing: false, position: 0, duration: 0, at: 0, id: '' }, artKey = '', shownPos = -1;
-  $('mPlay').innerHTML = PLAY + PAUSE;
-  function setPlayIcon(playing) { $('mPlay').className = 'mb press' + (playing ? ' playing' : ''); }
-  $('mArt').onload = function () { $('mArt').className = 'shown'; };
+  each('m-btns', function (b) {
+    b.innerHTML = '<div class="mb press m-prev">' + PREV + '</div><div class="mb press m-play">' + PLAY + PAUSE + '</div><div class="mb press m-next">' + NEXT + '</div>';
+  });
+  function setPlayIcon(playing) { each('m-play', function (e) { e.className = 'mb press m-play' + (playing ? ' playing' : ''); }); }
+  each('m-art', function (img) { img.onload = function () { img.className = 'm-art shown'; }; });
+  $('immBg').onload = function () { $('immBg').className = 'shown'; };
   function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function renderMusic(m) {
     m = m || {};
-    $('mApp').textContent = m.app ? m.app : 'Now Playing';
-    $('mApp').className = m.app === 'Spotify' ? 'spotify' : m.app === 'Music' ? 'music' : '';
-    $('mTitle').textContent = m.title || 'Nothing playing';
-    $('mArtist').textContent = m.title ? (m.artist || '') : 'Spotify or Apple Music';
+    each('m-app', function (e) {
+      e.textContent = m.app ? m.app : 'Now Playing';
+      e.className = 'm-app' + (m.app === 'Spotify' ? ' spotify' : m.app === 'Music' ? ' music' : '');
+    });
+    setText('m-title', m.title || 'Nothing playing');
+    setText('m-artist', m.title ? (m.artist || '') : 'Spotify or Apple Music');
     var next = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now(), id: m.id || '' };
     // Right after a seek the Mac may still report the old position; trust our own for a moment.
     if (next.id === track.id && Date.now() < seekHold) { next.position = track.position; next.at = track.at; }
@@ -792,8 +921,10 @@
     var key = m.id && m.hasArt ? m.id : '';
     if (key !== artKey) {
       artKey = key;
-      $('mArt').className = '';   // fade the old cover out; onload fades the new one in
-      if (key) $('mArt').src = url('/artwork', 'id=' + encodeURIComponent(key));
+      // Fade the old cover out; onload fades the new one in (on both pages and in the Immersive background).
+      var src = key ? url('/artwork', 'id=' + encodeURIComponent(key)) : '';
+      each('m-art', function (img) { img.className = 'm-art'; if (src) img.src = src; });
+      $('immBg').className = ''; if (src) $('immBg').src = src;
     }
     tickProgress();
   }
@@ -801,7 +932,7 @@
   // Seeking back or a new track snaps instead of sliding backwards.
   function tickProgress() {
     if (scrubbing) return;   // the finger owns the bar
-    if (!track.duration) { setFill(0, true); $('mPos').textContent = $('mLeft').textContent = ''; return; }
+    if (!track.duration) { setFill(0, true); setText('m-pos', ''); setText('m-left', ''); return; }
     var pos = Math.min(track.duration, track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0));
     var target = track.playing ? Math.min(track.duration, pos + 1) : pos;
     setFill(target / track.duration, shownPos < 0 || pos < shownPos - 1.5 || pos > shownPos + 3 || !track.playing);
@@ -809,60 +940,65 @@
     showTimes(pos);
   }
   function setFill(f, jump) {
-    var fill = $('mProgFill');
-    fill.className = jump ? 'jump' : '';
-    if (jump) fill.offsetWidth;   // apply the snap before transitions come back
-    fill.style.webkitTransform = fill.style.transform = 'scaleX(' + f + ')';
+    each('m-prog', function (bar) {
+      var fill = bar.firstChild;
+      fill.className = jump ? 'jump' : '';
+      if (jump) fill.offsetWidth;   // apply the snap before transitions come back
+      fill.style.webkitTransform = fill.style.transform = 'scaleX(' + f + ')';
+    });
   }
   function showTimes(pos) {
-    $('mPos').textContent = clock(pos);
-    $('mLeft').textContent = '-' + clock(track.duration - pos);
+    setText('m-pos', clock(pos));
+    setText('m-left', '-' + clock(track.duration - pos));
   }
   setInterval(tickProgress, 1000);
 
-  // Scrubbing: touch anywhere along the bar and drag. The fill follows the finger 1:1 (no easing, so it never
+  // Scrubbing: touch anywhere along a bar and drag. The fill follows the finger 1:1 (no easing, so it never
   // lags), the times update live, and letting go seeks the player on the Mac.
-  var scrubbing = false, scrubF = 0, seekHold = 0;
+  var scrubbing = false, scrubF = 0, seekHold = 0, scrubBar = null;
   function scrubTo(clientX) {
-    var r = $('mProg').getBoundingClientRect();   // includes the stage's scale
+    var r = scrubBar.getBoundingClientRect();   // includes the stage's scale
     scrubF = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
     setFill(scrubF, true);
     showTimes(scrubF * track.duration);
   }
-  function scrubStart(clientX) {
-    if (!track.duration) return false;
+  function scrubStart(hit, clientX) {
+    if (!track.duration) return;
     scrubbing = true;
-    $('mProg').className = $('mTimes').className = 'scrub';
+    scrubBar = hit.parentNode.getElementsByClassName('m-prog')[0];
+    each('m-prog', function (e) { e.className = 'm-prog scrub'; });
+    each('m-times', function (e) { e.className = 'm-times tnum scrub'; });
     scrubTo(clientX);
-    return true;
   }
   function scrubEnd() {
     if (!scrubbing) return;
     scrubbing = false;
-    $('mProg').className = $('mTimes').className = '';
+    each('m-prog', function (e) { e.className = 'm-prog'; });
+    each('m-times', function (e) { e.className = 'm-times tnum'; });
     var pos = scrubF * track.duration;
     track.position = pos; track.at = Date.now();
     shownPos = pos; seekHold = Date.now() + 3000;
     xhr('POST', url('/media'), 'cmd=seek&pos=' + pos.toFixed(1), function () { setTimeout(pollStats, 600); });
   }
-  var hit = $('mHit');
-  hit.addEventListener('touchstart', function (e) { e.preventDefault(); scrubStart(e.touches[0].clientX); });
-  hit.addEventListener('touchmove', function (e) { e.preventDefault(); if (scrubbing) scrubTo(e.touches[0].clientX); });
-  hit.addEventListener('touchend', function (e) { e.preventDefault(); scrubEnd(); });
-  hit.addEventListener('touchcancel', scrubEnd);
-  hit.addEventListener('mousedown', function (e) { e.preventDefault(); scrubStart(e.clientX); });
+  each('m-hit', function (hit) {
+    hit.addEventListener('touchstart', function (e) { e.preventDefault(); scrubStart(hit, e.touches[0].clientX); });
+    hit.addEventListener('touchmove', function (e) { e.preventDefault(); if (scrubbing) scrubTo(e.touches[0].clientX); });
+    hit.addEventListener('touchend', function (e) { e.preventDefault(); scrubEnd(); });
+    hit.addEventListener('touchcancel', scrubEnd);
+    hit.addEventListener('mousedown', function (e) { e.preventDefault(); scrubStart(hit, e.clientX); });
+  });
   document.addEventListener('mousemove', function (e) { if (scrubbing) scrubTo(e.clientX); });
   document.addEventListener('mouseup', scrubEnd);
   function media(cmd) {
     xhr('POST', url('/media'), 'cmd=' + cmd, function () { setTimeout(pollStats, 450); });
   }
-  tap($('mPlay'), function () { setPlayIcon(!track.playing); track.playing = !track.playing; media('playpause'); });
-  tap($('mNext'), function () { media('next'); });
-  tap($('mPrev'), function () { media('previous'); });
-  tap($('mInfo'), function () { media('open'); toast('Opening the player on the Mac'); });
+  each('m-play', function (b) { tap(b, function () { track.position = Math.min(track.duration, track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0)); track.at = Date.now(); track.playing = !track.playing; setPlayIcon(track.playing); media('playpause'); }); });
+  each('m-next', function (b) { tap(b, function () { media('next'); }); });
+  each('m-prev', function (b) { tap(b, function () { media('previous'); }); });
+  each('m-meta', function (b) { tap(b, function () { media('open'); toast('Opening the player on the Mac'); }); });
   setPlayIcon(false);
 
-  // ---------- Phone app: camera + mic to the Mac over a secure WebSocket ----------
+  // ---------- Phone page: camera + mic to the Mac over a secure WebSocket ----------
   // Messages: 1 type byte + payload. 'H' token, 'V' JPEG frame, 'A' 16 kHz mono s16le PCM.
   // The Mac turns 'V' into its /camera.mjpg feed (OBS) and plays 'A' into BlackHole (the mic).
   // Ports: plain http = base, https = base+2, secure WebSocket = base+3.
@@ -1007,16 +1143,14 @@
   document.addEventListener('click', keepAwake, true);
 
   // ---------- boot ----------
-  // First load only: the visible tiles and icons rise in, 40ms apart. The class is removed afterwards
+  // First load only: the visible page's pieces rise in, 40ms apart. The class is removed afterwards
   // because a finished animation would otherwise keep overriding the press transforms.
   function bootIn() {
-    var items = [].slice.call(document.querySelectorAll('#rail .ricon, #rHome'))
-      .concat(view === 'apps' ? [].slice.call($('grid').children) : [$('music'), $('net'), $('bat')]);
-    items.forEach(function (el, i) { el.style.webkitAnimationDelay = el.style.animationDelay = i * 40 + 'ms'; });
-    $('stage').className = 'boot';
+    var p = $(pages[page].id), items = p.id === 'pApps' ? [].slice.call($('grid').children) : [].slice.call(p.children);
+    if (p.id === 'pImm') items = [].slice.call($('imm').children).filter(function (e) { return e.id !== 'immBg' && e.id !== 'immShade'; });
+    items.forEach(function (el, i) { el.style.webkitAnimationDelay = el.style.animationDelay = i * 40 + 'ms'; el.className += ' rise'; });
     setTimeout(function () {
-      $('stage').className = '';
-      items.forEach(function (el) { el.style.webkitAnimationDelay = el.style.animationDelay = ''; });
+      items.forEach(function (el) { el.className = el.className.replace(/ rise/g, ''); el.style.webkitAnimationDelay = el.style.animationDelay = ''; });
     }, 420 + items.length * 40);
   }
   var booted = false;
@@ -1027,7 +1161,8 @@
       sheet('login', false);
       loadKeys();
       var last = store('view');
-      show(last === 'apps' || (modern && last === 'phone') ? last : 'dash');
+      for (var i = 0; i < pages.length; i++) if (pages[i].name === last) { goPage(i, false); break; }
+      pollStats();
       if (!booted) { booted = true; bootIn(); }
       if (/edit/.test(location.search)) setTimeout(openEditor, 300);
     });
@@ -1036,7 +1171,7 @@
     token = $('code').value.replace(/\s/g, '').toLowerCase();
     store('token', token); location.hash = 'k=' + token; connect();
   });
-  renderGrid(); fit(); tick(); connect(); keepAwake();
+  renderGrid(); fit(); tick(); railPos(-RAILW, false); connect(); keepAwake();
 })();
 </script>
 </body>

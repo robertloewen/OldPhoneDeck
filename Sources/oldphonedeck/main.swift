@@ -125,7 +125,9 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
         conn.respond(text: "ok")
     case ("POST", "/media"):
         let cmd = p["cmd"] ?? ""
-        if cmd == "open" { DispatchQueue.global().async { music.openPlayer() } } else { music.control(cmd) }
+        if cmd == "open" { DispatchQueue.global().async { music.openPlayer() } }
+        else if cmd == "seek", let pos = Double(p["pos"] ?? "") { music.seek(pos) }
+        else { music.control(cmd) }
         conn.respond(text: "ok")
     case ("GET", "/artwork"):
         guard let art = music.artwork() else { return conn.respond(404, text: "no artwork") }

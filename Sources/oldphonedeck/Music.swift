@@ -96,6 +96,16 @@ final class Music {
         }
     }
 
+    /// Jumps to `seconds` in the current track of the app shown on the deck.
+    func seek(_ seconds: Double) {
+        queue.async {
+            let app = (self.current["app"] as? String) ?? "Spotify"
+            guard app == "Spotify" || app == "Music", seconds.isFinite, seconds >= 0 else { return }
+            _ = Music.osascript("tell application \"\(app)\" to set player position to \(String(format: "%.1f", seconds))")
+            self.refresh()
+        }
+    }
+
     func openPlayer() {
         let app = (snapshot()["app"] as? String) ?? "Spotify"
         _ = Music.osascript("tell application \"\(app)\" to activate")

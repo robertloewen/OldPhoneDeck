@@ -39,16 +39,20 @@
   .press.down { -webkit-transform: scale(.94); transform: scale(.94); }
   .tile.press.down, .pbtn.down, .btn.down { -webkit-transform: scale(.97); transform: scale(.97); }
 
-  /* ---- side rail: time, recent apps, Take note, home button (a bottom bar in portrait) ---- */
+  /* ---- side rail: time, Take note + apps (scrolling), home button (a bottom bar in portrait) ---- */
   #rail { position: absolute; z-index: 5; background: #141416; box-shadow: inset -.5px 0 0 rgba(255,255,255,.08); }
   #rail.bar { box-shadow: inset 0 .5px 0 rgba(255,255,255,.08); }
   #rClock { position: absolute; left: 0; right: 0; top: 13px; text-align: center; line-height: 1; }
   #time { font-size: 17px; font-weight: 600; letter-spacing: -.3px;
     -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
-  #ampm { display: block; margin-top: 2px; font-size: 9px; font-weight: 600; color: #8e8e93; letter-spacing: .3px; }
-  #link { display: inline-block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin-top: 6px; }
+  #link { display: block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin: 7px auto 0; }
   #link.ok { background: #30d158; }
-  #rDock { position: absolute; left: 0; right: 0; top: 66px; }
+  /* Take note + every chosen app, in a column that scrolls with momentum; edges fade instead of cutting off. */
+  #rDock { position: absolute; left: 0; right: 0; top: 50px; bottom: 70px; padding: 10px 0 4px; box-sizing: border-box;
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%); }
+  #rDock::-webkit-scrollbar { display: none; }
   .ricon { position: relative; width: 50px; height: 50px; margin: 0 auto 12px; border-radius: 12px; }
   .ricon img { position: absolute; left: -6px; top: -6px; width: 62px; height: 62px; }
   .rhome { position: absolute; left: 50%; bottom: 12px; width: 50px; height: 50px; margin-left: -25px; border-radius: 12px;
@@ -59,11 +63,13 @@
     transition: opacity 200ms cubic-bezier(.23,1,.32,1), transform 200ms cubic-bezier(.23,1,.32,1); }
   .rhome .g-dash, .rhome.dash .g-grid { opacity: 0; -webkit-transform: scale(.6); transform: scale(.6); }
   .rhome.dash .g-dash { opacity: 1; -webkit-transform: none; transform: none; }
-  #rail.bar #rClock { left: 18px; right: auto; top: 50%; margin-top: -16px; text-align: left; }
-  #rail.bar #ampm { display: inline; margin-left: 3px; }
-  #rail.bar #link { display: block; }
-  #rail.bar #rDock { left: 50%; right: auto; top: 50%; margin-top: -25px; }
-  #rail.bar .ricon { float: left; margin: 0 6px; }
+  #rail.bar #rClock { left: 18px; right: auto; top: 50%; margin-top: -14px; text-align: left; }
+  #rail.bar #link { margin-left: 0; }
+  #rail.bar #rDock { left: 84px; right: 80px; top: 0; bottom: 0; padding: 16px 6px; white-space: nowrap;
+    overflow-x: auto; overflow-y: hidden; touch-action: pan-x;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent 100%); }
+  #rail.bar .ricon { display: inline-block; vertical-align: top; margin: 0 6px; }
   #rail.bar .rhome { left: auto; right: 18px; bottom: auto; top: 50%; margin: -25px 0 0; }
 
   /* ---- tiles (dashboard) ---- */
@@ -84,14 +90,20 @@
   #mTitle { margin-top: 5px; font-size: 17px; font-weight: 700; line-height: 21px; letter-spacing: -.3px;
     max-height: 42px; overflow: hidden; }
   #mArtist { font-size: 13px; color: #aeaeb2; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mProg { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+  /* While scrubbing the bar thickens (from its centre line) and the times light up, like Apple Music. */
+  #mProg { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden;
+    -webkit-transition: -webkit-transform 200ms cubic-bezier(.23,1,.32,1); transition: transform 200ms cubic-bezier(.23,1,.32,1); }
+  #mProg.scrub { -webkit-transform: scaleY(2.25); transform: scaleY(2.25); }
+  #mHit { position: absolute; touch-action: none; }
   /* Progress glides at constant speed (linear, one tick per second) via scaleX instead of jumping in width. */
   #mProg i { display: block; height: 100%; width: 100%; background: #fff;
     -webkit-transform-origin: 0 0; transform-origin: 0 0; -webkit-transform: scaleX(0); transform: scaleX(0);
     -webkit-transition: -webkit-transform 1s linear; transition: transform 1s linear; }
   #mProg i.jump { -webkit-transition: none; transition: none; }
   #mTimes { position: absolute; font-size: 10px; font-weight: 600; color: #8e8e93;
-    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
+    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum";
+    -webkit-transition: color 200ms ease; transition: color 200ms ease; }
+  #mTimes.scrub { color: #fff; }
   #mTimes span { float: right; }
   #mBtns { position: absolute; height: 46px; text-align: center; }
   .mb { display: inline-block; position: relative; width: 56px; height: 46px; vertical-align: top; }
@@ -226,7 +238,7 @@
   <div id="toast"></div>
 
   <div id="rail">
-    <div id="rClock"><span id="time">–</span><span id="ampm"></span><span id="link"></span></div>
+    <div id="rClock"><span id="time">–</span><span id="link"></span></div>
     <div id="rDock"></div>
     <div class="rhome press" id="rHome"></div>
   </div>
@@ -238,6 +250,7 @@
       <div id="mInfo"><div id="mApp">Now Playing</div><div id="mTitle">Nothing playing</div><div id="mArtist">Spotify or Apple Music</div></div>
       <div id="mProg"><i id="mProgFill"></i></div>
       <div id="mTimes"><span id="mLeft"></span><b id="mPos"></b></div>
+      <div id="mHit"></div>
       <div id="mBtns">
         <div class="mb press" id="mPrev"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg></div>
         <div class="mb press" id="mPlay"></div>
@@ -334,13 +347,18 @@
     clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = ''; }, 1900);
   }
   // Tap handler: instant on touch (no 300 ms delay), works with a mouse too, shows a pressed state.
+  // A finger that drifts less than 10pt still counts as a tap; more than that is a scroll (the rail scrolls).
   function tap(el, fn, hold) {
-    var moved, held, timer;
+    var moved, held, timer, x0, y0;
     el.addEventListener('touchstart', function (e) {
       moved = false; held = false; el.className += ' down';
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
       if (hold) timer = setTimeout(function () { held = true; unpress(); hold(e); }, 550);
     });
-    el.addEventListener('touchmove', function () { moved = true; clearTimeout(timer); unpress(); });
+    el.addEventListener('touchmove', function (e) {
+      if (moved || Math.abs(e.touches[0].clientX - x0) + Math.abs(e.touches[0].clientY - y0) < 10) return;
+      moved = true; clearTimeout(timer); unpress();
+    });
     el.addEventListener('touchend', function (e) {
       e.preventDefault(); clearTimeout(timer); unpress();
       if (!moved && !held) fn(e);
@@ -352,7 +370,7 @@
 
   // ---------- layout ----------
   // Landscape: the stage is 320pt tall and as wide as the screen's shape (480 on a 4S, ~700 on an iPhone 17).
-  // A rail on the left (time, recent apps, Take note, home button); the dashboard or app grid fills the rest.
+  // A rail on the left (time, Take note + apps, home button); the dashboard or app grid fills the rest.
   // Portrait (modern phones held upright): 360pt wide, the rail becomes a bar along the bottom.
   // The stage sits inside the safe area; the page background fills the rest of the screen.
   var W = 480, H = 320, portrait = false, RAIL = 78, BAR = 82;
@@ -416,6 +434,7 @@
     var progTop = 14 + a + Math.max(14, Math.round((muH - a - 14 - 70) / 2));
     px($('mProg'), { left: 14, top: progTop, width: muW - 28 });
     px($('mTimes'), { left: 14, top: progTop + 9, width: muW - 28 });
+    px($('mHit'), { left: 6, top: progTop - 18, width: muW - 12, height: 46 });   // generous touch target
     px($('mBtns'), { left: 14, bottom: 10, width: muW - 28 });
     // Internet: big number, details, and a live graph filling the rest.
     px($('netBig'), { top: 34 }); px($('netSub'), { top: 70 });
@@ -466,12 +485,10 @@
 
   // ---------- clock ----------
   function tick() {
-    var d = new Date();
-    // Keep the device's 12/24h preference: split "1:31:05 AM" into "1:31" + "AM".
-    var m = /(\d{1,2}[:.]\d{2})(?:[:.]\d{2})?\s*([^\d\s]*)/.exec(d.toLocaleTimeString()) || [];
-    $('time').textContent = m[1] || (d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2));
-    $('ampm').textContent = m[2] || '';
+    // 24-hour HH:mm, the same as the Mac's menu bar.
+    $('time').textContent = hhmm(new Date());
   }
+  function hhmm(d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   setInterval(tick, 10000);
 
   // ---------- apps ----------
@@ -506,11 +523,6 @@
   function iconImg(a) { return '<img src="' + url('/icon', 'path=' + encodeURIComponent(a.path)) + '">'; }
   function launch(a) {
     xhr('POST', url('/launch'), 'path=' + encodeURIComponent(a.path), function (s) { toast(s === 200 ? 'Opening ' + a.name : 'Launch failed'); });
-    // Remember it for the rail's recent apps.
-    var recent = recentPaths().filter(function (p) { return p !== a.path; });
-    recent.unshift(a.path);
-    store('recent', JSON.stringify(recent.slice(0, 6)));
-    renderDock();
   }
   function takeNoteHold() { xhr('POST', url('/claude'), 'text=', function () { toast('Claude is open on the Mac'); }); }
 
@@ -558,31 +570,23 @@
     px($('hint'), { left: main.x, width: main.w, top: main.y + main.h - 14 });
   }
 
-  // Rail: the most recently opened apps (topped up with the first chosen ones), then Take note.
-  function recentPaths() { try { return JSON.parse(store('recent') || '[]') || []; } catch (e) { return []; } }
+  // Rail: Take note first, then every chosen app in the same order as the grid (stable, so the thumb learns it).
+  // Scrolls when they don't all fit.
   function renderDock() {
-    var dock = $('rDock'), slots = portrait ? 3 : Math.max(1, Math.min(3, Math.floor((H - 66 - 62 + 12) / 62)));
-    var chosen = chosenApps(), list = [];
-    recentPaths().forEach(function (p) {
-      var a = byPath(p);
-      if (a && list.length < slots - 1 && (launcher.selected || []).indexOf(p) >= 0) list.push(a);
-    });
-    chosen.forEach(function (a) { if (list.length < slots - 1 && list.indexOf(a) < 0) list.push(a); });
+    var dock = $('rDock');
     dock.innerHTML = '';
-    list.forEach(function (a) {
+    var note = document.createElement('div');
+    note.className = 'ricon press note-ic';
+    note.innerHTML = noteSvg(30);
+    tap(note, openClaude, takeNoteHold);
+    dock.appendChild(note);
+    chosenApps().forEach(function (a) {
       var el = document.createElement('div');
       el.className = 'ricon press';
       el.innerHTML = iconImg(a);
       tap(el, function () { launch(a); }, openEditor);
       dock.appendChild(el);
     });
-    var note = document.createElement('div');
-    note.className = 'ricon press note-ic';
-    note.innerHTML = noteSvg(30);
-    tap(note, openClaude, takeNoteHold);
-    dock.appendChild(note);
-    if (portrait) px(dock, { width: (list.length + 1) * 62, marginLeft: -(list.length + 1) * 31 });
-    else { dock.style.width = ''; dock.style.marginLeft = ''; }
   }
 
   // ---------- editor (hold any app) ----------
@@ -780,7 +784,10 @@
     $('mApp').className = m.app === 'Spotify' ? 'spotify' : m.app === 'Music' ? 'music' : '';
     $('mTitle').textContent = m.title || 'Nothing playing';
     $('mArtist').textContent = m.title ? (m.artist || '') : 'Spotify or Apple Music';
-    track = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now(), id: m.id || '' };
+    var next = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now(), id: m.id || '' };
+    // Right after a seek the Mac may still report the old position; trust our own for a moment.
+    if (next.id === track.id && Date.now() < seekHold) { next.position = track.position; next.at = track.at; }
+    track = next;
     setPlayIcon(track.playing);
     var key = m.id && m.hasArt ? m.id : '';
     if (key !== artKey) {
@@ -793,21 +800,59 @@
   // Each tick sets where the bar should be one second from now and lets a linear transition carry it there.
   // Seeking back or a new track snaps instead of sliding backwards.
   function tickProgress() {
-    var fill = $('mProgFill');
+    if (scrubbing) return;   // the finger owns the bar
     if (!track.duration) { setFill(0, true); $('mPos').textContent = $('mLeft').textContent = ''; return; }
     var pos = Math.min(track.duration, track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0));
     var target = track.playing ? Math.min(track.duration, pos + 1) : pos;
     setFill(target / track.duration, shownPos < 0 || pos < shownPos - 1.5 || pos > shownPos + 3 || !track.playing);
     shownPos = target;
+    showTimes(pos);
+  }
+  function setFill(f, jump) {
+    var fill = $('mProgFill');
+    fill.className = jump ? 'jump' : '';
+    if (jump) fill.offsetWidth;   // apply the snap before transitions come back
+    fill.style.webkitTransform = fill.style.transform = 'scaleX(' + f + ')';
+  }
+  function showTimes(pos) {
     $('mPos').textContent = clock(pos);
     $('mLeft').textContent = '-' + clock(track.duration - pos);
-    function setFill(f, jump) {
-      fill.className = jump ? 'jump' : '';
-      if (jump) fill.offsetWidth;   // apply the snap before transitions come back
-      fill.style.webkitTransform = fill.style.transform = 'scaleX(' + f + ')';
-    }
   }
   setInterval(tickProgress, 1000);
+
+  // Scrubbing: touch anywhere along the bar and drag. The fill follows the finger 1:1 (no easing, so it never
+  // lags), the times update live, and letting go seeks the player on the Mac.
+  var scrubbing = false, scrubF = 0, seekHold = 0;
+  function scrubTo(clientX) {
+    var r = $('mProg').getBoundingClientRect();   // includes the stage's scale
+    scrubF = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    setFill(scrubF, true);
+    showTimes(scrubF * track.duration);
+  }
+  function scrubStart(clientX) {
+    if (!track.duration) return false;
+    scrubbing = true;
+    $('mProg').className = $('mTimes').className = 'scrub';
+    scrubTo(clientX);
+    return true;
+  }
+  function scrubEnd() {
+    if (!scrubbing) return;
+    scrubbing = false;
+    $('mProg').className = $('mTimes').className = '';
+    var pos = scrubF * track.duration;
+    track.position = pos; track.at = Date.now();
+    shownPos = pos; seekHold = Date.now() + 3000;
+    xhr('POST', url('/media'), 'cmd=seek&pos=' + pos.toFixed(1), function () { setTimeout(pollStats, 600); });
+  }
+  var hit = $('mHit');
+  hit.addEventListener('touchstart', function (e) { e.preventDefault(); scrubStart(e.touches[0].clientX); });
+  hit.addEventListener('touchmove', function (e) { e.preventDefault(); if (scrubbing) scrubTo(e.touches[0].clientX); });
+  hit.addEventListener('touchend', function (e) { e.preventDefault(); scrubEnd(); });
+  hit.addEventListener('touchcancel', scrubEnd);
+  hit.addEventListener('mousedown', function (e) { e.preventDefault(); scrubStart(e.clientX); });
+  document.addEventListener('mousemove', function (e) { if (scrubbing) scrubTo(e.clientX); });
+  document.addEventListener('mouseup', scrubEnd);
   function media(cmd) {
     xhr('POST', url('/media'), 'cmd=' + cmd, function () { setTimeout(pollStats, 450); });
   }

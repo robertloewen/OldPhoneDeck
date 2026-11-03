@@ -50,7 +50,7 @@
   #link.ok { background: #30d158; }
   #rDock { position: absolute; left: 0; right: 0; top: 66px; }
   .ricon { position: relative; width: 50px; height: 50px; margin: 0 auto 12px; border-radius: 12px; }
-  .ricon img { position: absolute; left: -3px; top: -3px; width: 56px; height: 56px; }
+  .ricon img { position: absolute; left: -6px; top: -6px; width: 62px; height: 62px; }
   .rhome { position: absolute; left: 50%; bottom: 12px; width: 50px; height: 50px; margin-left: -25px; border-radius: 12px;
     background: #2c2c2e; }
   /* Both glyphs live in the button; the inactive one shrinks away so the swap reads as a morph. */
@@ -124,7 +124,8 @@
   /* ---- app grid ---- */
   .app { position: absolute; text-align: center; }
   .ic { position: relative; margin: 0 auto; }
-  .ic img { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; }
+  /* macOS icons draw their squircle at ~80% of the canvas; scale up so they match Take note / Phone. */
+  .ic img { position: absolute; left: -12%; top: -12%; width: 124%; height: 124%; }
   .app .label { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .app .ic { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
     transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }

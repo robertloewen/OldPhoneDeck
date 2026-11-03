@@ -2,20 +2,18 @@
 <html>
 <head>
 <meta charset="utf-8">
-<!-- OldPhoneDeck: a Stream Deck–style home for a phone in landscape.
+<!-- OldPhoneDeck: a car-dashboard style home for a phone in landscape (side rail + dashboard tiles + app grid).
      Must run in iOS 8/9 Safari (iPhone 4S): ES5 syntax only, no fetch, no flex gap, no Intl.
-     Modern iPhones additionally get a Phone tab (camera + mic to the Mac) and voice input for Ask Claude. -->
+     Modern iPhones additionally get a Phone app (camera + mic to the Mac) and voice input for Take note. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OldPhoneDeck">
-<meta name="theme-color" content="#050507">
+<meta name="theme-color" content="#000000">
 <title>OldPhoneDeck</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; color: #f5f5f7;
-    background: radial-gradient(ellipse at 0% 0%, rgba(94,92,230,.20), rgba(0,0,0,0) 55%),
-                radial-gradient(ellipse at 100% 100%, rgba(217,119,87,.14), rgba(0,0,0,0) 55%), #050507;
+  html, body { margin: 0; height: 100%; overflow: hidden; color: #fff; background: #000;
     font: 13px -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased;
     -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
   /* Everything is laid out on a stage 320pt tall; its width follows the screen (480 on a 4S, wider on modern phones). */
@@ -27,147 +25,141 @@
   .view { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: none; }
   .view.on { display: block; }
 
-  /* ---- status bar ---- */
-  #status { position: absolute; left: 0; right: 0; top: 0; height: 46px; z-index: 5; }
-  /* Lock-screen style: big rounded time, small caps date underneath. */
-  #clock { position: absolute; left: 16px; top: 5px; line-height: 1; }
-  #time { font: 700 24px "SF Pro Rounded", ui-rounded, -apple-system, "Helvetica Neue", sans-serif; letter-spacing: -.6px;
+  /* ---- side rail: time, recent apps, Take note, home button (a bottom bar in portrait) ---- */
+  #rail { position: absolute; z-index: 5; background: #141416; box-shadow: inset -.5px 0 0 rgba(255,255,255,.08); }
+  #rail.bar { box-shadow: inset 0 .5px 0 rgba(255,255,255,.08); }
+  #rClock { position: absolute; left: 0; right: 0; top: 13px; text-align: center; line-height: 1; }
+  #time { font-size: 17px; font-weight: 600; letter-spacing: -.3px;
     -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
-  #ampm { font-size: 10px; font-weight: 700; color: #8e8e93; margin-left: 3px; letter-spacing: .3px; }
-  #date { display: block; margin-top: 3px; font-size: 9px; font-weight: 600; letter-spacing: .9px; text-transform: uppercase; color: #8e8e93; }
-  #seg { position: absolute; left: 50%; top: 11px; margin-left: -66px; width: 132px; height: 22px; display: none;
-    background: rgba(118,118,128,.24); border-radius: 8px; }
-  #seg div { float: left; width: 62px; height: 18px; margin: 2px; line-height: 18px; text-align: center;
-    font-size: 11px; font-weight: 600; color: #c7c7cc; border-radius: 6px; }
-  #seg div.on { background: #636366; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
-  #right { position: absolute; right: 16px; top: 14px; font-size: 11px; font-weight: 600; color: #c7c7cc; white-space: nowrap; }
-  #link { display: inline-block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin-right: 5px; vertical-align: 1px; }
+  #ampm { display: block; margin-top: 2px; font-size: 9px; font-weight: 600; color: #8e8e93; letter-spacing: .3px; }
+  #link { display: inline-block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin-top: 6px; }
   #link.ok { background: #30d158; }
-  .batt { display: inline-block; width: 20px; height: 9px; border: 1px solid rgba(255,255,255,.5); border-radius: 3px;
-    position: relative; vertical-align: -1px; margin-left: 8px; }
-  .batt:after { content: ""; position: absolute; right: -3px; top: 2px; width: 1.5px; height: 5px; background: rgba(255,255,255,.5); border-radius: 0 1px 1px 0; }
-  .batt i { position: absolute; left: 1px; top: 1px; bottom: 1px; border-radius: 1px; background: #fff; }
+  #rDock { position: absolute; left: 0; right: 0; top: 66px; }
+  .ricon { position: relative; width: 50px; height: 50px; margin: 0 auto 12px; border-radius: 12px; }
+  .ricon img { position: absolute; left: -3px; top: -3px; width: 56px; height: 56px; }
+  .ricon.down, .rhome.down { -webkit-transform: scale(.9); transform: scale(.9); opacity: .75; }
+  .rhome { position: absolute; left: 50%; bottom: 12px; width: 50px; height: 50px; margin-left: -25px; border-radius: 12px;
+    background: #2c2c2e; }
+  .rhome svg { position: absolute; left: 13px; top: 13px; }
+  #rail.bar #rClock { left: 18px; right: auto; top: 50%; margin-top: -16px; text-align: left; }
+  #rail.bar #ampm { display: inline; margin-left: 3px; }
+  #rail.bar #link { display: block; }
+  #rail.bar #rDock { left: 50%; right: auto; top: 50%; margin-top: -25px; }
+  #rail.bar .ricon { float: left; margin: 0 6px; }
+  #rail.bar .rhome { left: auto; right: 18px; bottom: auto; top: 50%; margin: -25px 0 0; }
 
-  /* ---- keys ---- */
-  #keys { position: absolute; top: 76px; width: 316px; }
-  .key { position: relative; float: left; width: 70px; margin: 0 12px 14px 0; text-align: center; }
-  .key:nth-child(4n) { margin-right: 0; }
-  .cap { width: 70px; height: 70px; border-radius: 18px; position: relative;
-    background: linear-gradient(180deg, #303036 0%, #1b1b1f 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.11), inset 0 -1px 0 rgba(0,0,0,.6), 0 3px 0 #0a0a0c, 0 8px 16px rgba(0,0,0,.55);
-    -webkit-transition: -webkit-transform .08s, box-shadow .08s; transition: transform .08s, box-shadow .08s; }
-  .cap img { position: absolute; left: 10px; top: 10px; width: 50px; height: 50px; }
-  .key.down .cap { -webkit-transform: translateY(2px) scale(.97); transform: translateY(2px) scale(.97);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 0 #0a0a0c, 0 2px 6px rgba(0,0,0,.5); }
-  .key .label { margin-top: 7px; font-size: 10px; font-weight: 500; color: #aeaeb2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .key.empty .cap { background: rgba(255,255,255,.03); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
-  .key.empty .cap:after { content: "+"; position: absolute; left: 0; right: 0; top: 16px; font-size: 30px; font-weight: 200; color: #636366; }
-  .key.claude .cap { background: linear-gradient(180deg, #e8946f 0%, #c55e39 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.30), inset 0 -1px 0 rgba(0,0,0,.25), 0 3px 0 #6b2d16, 0 8px 18px rgba(217,119,87,.35); }
-  .key.claude.down .cap { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 0 #6b2d16, 0 2px 8px rgba(217,119,87,.3); }
-  .key.claude svg { position: absolute; left: 17px; top: 17px; }
-  .key.claude .label { color: #f2b49c; }
-  #hint { position: absolute; top: 290px; font-size: 9.5px; color: #48484a; text-align: center; }
+  /* ---- tiles (dashboard) ---- */
+  .tile { position: absolute; border-radius: 16px; box-sizing: border-box; overflow: hidden; background: #1c1c1e; }
+  .tile h3 { margin: 0; position: absolute; left: 14px; top: 12px; font-size: 13px; font-weight: 600; color: #fff; }
+  .tile h3 i { font-style: normal; color: #8e8e93; font-weight: 500; }
+  .tile.down { background: #232325; }
 
-  /* ---- widgets ---- */
-  .card { position: absolute; border-radius: 18px; box-sizing: border-box; padding: 11px 12px; overflow: hidden;
-    background: rgba(255,255,255,.065); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
-  .card h3 { margin: 0 0 7px; font-size: 9.5px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #8e8e93; }
-  .big { font-size: 24px; font-weight: 600; letter-spacing: -.8px; line-height: 26px; white-space: nowrap; }
-  .big small { font-size: 10px; font-weight: 600; color: #8e8e93; letter-spacing: 0; margin-left: 3px; }
-  .sub { font-size: 10.5px; color: #c7c7cc; margin-top: 3px; white-space: nowrap; }
+  /* Now playing */
+  #mArt, #mNote { position: absolute; border-radius: 10px; }
+  #mArt { box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  #mArt.none { visibility: hidden; }
+  #mNote { text-align: center; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
+  #mInfo { position: absolute; }
+  #mApp { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #8e8e93; }
+  #mTitle { margin-top: 5px; font-size: 17px; font-weight: 700; line-height: 21px; letter-spacing: -.3px;
+    max-height: 42px; overflow: hidden; }
+  #mArtist { font-size: 13px; color: #ff375f; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mProg { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+  #mProg i { display: block; height: 100%; width: 0; background: #fff; border-radius: 2px; }
+  #mTimes { position: absolute; font-size: 10px; font-weight: 600; color: #8e8e93;
+    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
+  #mTimes span { float: right; }
+  #mBtns { position: absolute; height: 46px; text-align: center; }
+  .mb { display: inline-block; position: relative; width: 56px; height: 46px; vertical-align: top; }
+  .mb svg { position: absolute; left: 50%; top: 50%; }
+  .mb.down { opacity: .5; }
+
+  /* Internet */
+  .big { position: absolute; left: 14px; font-size: 30px; font-weight: 700; letter-spacing: -1px; line-height: 32px; white-space: nowrap; }
+  .big small { font-size: 12px; font-weight: 600; color: #8e8e93; letter-spacing: 0; margin-left: 3px; }
+  .sub { position: absolute; left: 14px; font-size: 12px; color: #aeaeb2; white-space: nowrap; }
   .arrow { color: #64d2ff; font-weight: 700; }
   .arrow.up { color: #30d158; }
-  #spark { display: block; margin-top: 6px; }
-  .foot { position: absolute; left: 12px; right: 12px; bottom: 9px; font-size: 9px; color: #636366; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* Batteries: compact chips, icon + percentage */
-  .chip { float: left; width: 50%; height: 30px; position: relative; box-sizing: border-box; padding-right: 6px; }
-  .chip svg { position: absolute; left: 0; top: 8px; width: 13px; height: 13px; }
-  .chip b { position: absolute; left: 17px; top: 7px; font-size: 11.5px; font-weight: 600; color: #f5f5f7; letter-spacing: -.3px;
+  #spark { position: absolute; left: 14px; display: block; }
+
+  /* Batteries: icon + percentage chips */
+  #batList { position: absolute; left: 14px; right: 14px; top: 38px; }
+  .chip { float: left; width: 50%; height: 30px; position: relative; box-sizing: border-box; }
+  .chip svg { position: absolute; left: 0; top: 7px; width: 16px; height: 16px; }
+  .chip b { position: absolute; left: 22px; top: 6px; font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -.3px;
     -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
-  .chip:nth-child(2n) { padding-left: 6px; }
-  .chip:nth-child(2n) svg { left: 6px; }
-  .chip:nth-child(2n) b { left: 23px; }
   .chip b.mid { color: #ffd60a; }
   .chip b.low { color: #ff453a; }
   .chip b.chg { color: #30d158; }
-  .empty-note { font-size: 10px; color: #636366; }
-  /* ---- now playing ---- */
-  #music { position: absolute; height: 52px; padding: 0; }
-  #mArt { position: absolute; left: 8px; top: 8px; width: 36px; height: 36px; border-radius: 8px;
-    background: linear-gradient(135deg, #3a3a3c, #232326); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
-  #mArt.none { visibility: hidden; }
-  #mNote { position: absolute; left: 8px; top: 8px; width: 36px; height: 36px; border-radius: 8px; text-align: center;
-    line-height: 36px; font-size: 18px; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
-  #mInfo { position: absolute; left: 54px; right: 116px; top: 9px; }
-  #mTitle { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mArtist { font-size: 10.5px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mProg { position: absolute; left: 54px; right: 116px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
-  #mProg i { display: block; height: 100%; width: 0; background: rgba(255,255,255,.75); border-radius: 2px; }
-  #mBtns { position: absolute; right: 8px; top: 9px; width: 104px; height: 34px; }
-  .mb { float: left; width: 34px; height: 34px; border-radius: 17px; position: relative; }
-  .mb svg { position: absolute; left: 9px; top: 9px; }
-  .mb.play { background: #f5f5f7; margin: 0 1px; }
-  .mb.down { -webkit-transform: scale(.9); transform: scale(.9); opacity: .7; }
+  .empty-note { font-size: 12px; color: #636366; }
 
-  /* ---- Phone tab (modern iPhones) ---- */
-  #pvBox { position: absolute; left: 16px; top: 42px; height: 264px; border-radius: 18px; overflow: hidden;
-    background: #111114; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
+  /* ---- app grid ---- */
+  .app { position: absolute; text-align: center; }
+  .ic { position: relative; margin: 0 auto; }
+  .ic img { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; }
+  .app .label { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app.down .ic { -webkit-transform: scale(.92); transform: scale(.92); opacity: .8; }
+  .app.empty .ic { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.18); }
+  .app.empty .ic:after { content: "+"; position: absolute; left: 0; right: 0; top: 50%; margin-top: -19px; font-size: 32px; font-weight: 200; color: #8e8e93; }
+  .app.empty .label { color: #8e8e93; }
+  .note-ic { background: linear-gradient(180deg, #ff9f0a 0%, #f2700c 100%); }
+  .phone-ic { background: linear-gradient(180deg, #5ee07c 0%, #29b34a 100%); }
+  .note-ic svg, .phone-ic svg { position: absolute; left: 50%; top: 50%; }
+  #hint { position: absolute; font-size: 10px; color: #48484a; text-align: center; }
+
+  /* ---- Phone app (modern iPhones) ---- */
+  #pvBox { position: absolute; border-radius: 16px; overflow: hidden; background: #1c1c1e; }
   #pv { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #pvOff { position: absolute; left: 0; right: 0; top: 122px; text-align: center; color: #636366; font-size: 12px; }
-  #pCtl { position: absolute; top: 42px; }
-  .pbtn { height: 52px; border-radius: 15px; margin-bottom: 9px; padding: 9px 13px; box-sizing: border-box;
-    background: linear-gradient(180deg, #303036 0%, #1b1b1f 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 3px 0 #0a0a0c, 0 6px 12px rgba(0,0,0,.5); }
-  .pbtn b { display: block; font-size: 12px; font-weight: 600; }
-  .pbtn span { display: block; font-size: 10px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pbtn.small { height: 36px; padding-top: 11px; }
-  .pbtn.on { background: linear-gradient(180deg, #34c759 0%, #248a3d 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 3px 0 #0f3d1b, 0 6px 14px rgba(52,199,89,.3); }
-  .pbtn.on span { color: #d8f5df; }
-  .pbtn.down { -webkit-transform: translateY(2px); transform: translateY(2px); }
+  #pvOff { position: absolute; left: 0; right: 0; top: 50%; margin-top: -8px; text-align: center; color: #636366; font-size: 12px; }
+  #pCtl { position: absolute; }
+  .pbtn { height: 54px; border-radius: 14px; margin-bottom: 10px; padding: 10px 14px; box-sizing: border-box; background: #1c1c1e; }
+  .pbtn b { display: block; font-size: 13px; font-weight: 600; }
+  .pbtn span { display: block; font-size: 11px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbtn.small { height: 40px; padding-top: 12px; }
+  .pbtn.on { background: #30d158; }
+  .pbtn.on span { color: #e3f9e8; }
+  .pbtn.down { opacity: .7; }
   #pNote { font-size: 9.5px; color: #8e8e93; line-height: 13px; margin-top: 4px; word-break: break-all; }
-  #pSetup { position: absolute; left: 16px; right: 16px; top: 42px; border-radius: 18px; padding: 14px; background: #1c1c1e;
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1); display: none; }
-  #pSetup h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; }
-  #pSetup p { margin: 0 0 8px; font-size: 11.5px; line-height: 16px; color: #d1d1d6; }
-  #pSetup a { color: #64d2ff; }
+  #pSetup { position: absolute; border-radius: 16px; padding: 16px; box-sizing: border-box; background: #1c1c1e; display: none; }
+  #pSetup h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+  #pSetup p { margin: 0 0 8px; font-size: 12px; line-height: 17px; color: #d1d1d6; }
+  #pSetup a { color: #0a84ff; }
 
   /* ---- sheets ---- */
-  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); z-index: 10; display: none; }
+  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 10; display: none; }
   .scrim.on { display: block; }
-  .sheet { position: absolute; top: 8px; left: 50%; width: 360px; margin-left: -180px; border-radius: 20px; padding: 13px; box-sizing: border-box;
+  .sheet { position: absolute; top: 8px; left: 50%; width: 360px; margin-left: -180px; border-radius: 20px; padding: 14px; box-sizing: border-box;
     background: #1c1c1e; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1), 0 20px 40px rgba(0,0,0,.6); }
-  .sheet h2 { margin: 0 0 9px; font-size: 13px; font-weight: 600; }
-  .sheet h2 small { font-size: 10.5px; font-weight: 500; color: #8e8e93; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #d97757; margin-right: 6px; }
+  .sheet h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+  .sheet h2 small { font-size: 11px; font-weight: 500; color: #8e8e93; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #ff9f0a; margin-right: 6px; }
   #askText { width: 100%; height: 56px; box-sizing: border-box; border: 0; border-radius: 11px; padding: 8px 10px; resize: none;
     background: #2c2c2e; color: #fff; font: 14px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
-  .btns { margin-top: 9px; overflow: hidden; }
-  .btn { float: right; margin-left: 8px; padding: 0 15px; height: 28px; line-height: 28px; border-radius: 14px; font-size: 12px; font-weight: 600;
+  .btns { margin-top: 10px; overflow: hidden; }
+  .btn { float: right; margin-left: 8px; padding: 0 16px; height: 30px; line-height: 30px; border-radius: 15px; font-size: 12.5px; font-weight: 600;
     background: #3a3a3c; color: #fff; }
-  .btn.primary { background: #d97757; }
-  .opt { float: left; font-size: 10.5px; color: #8e8e93; line-height: 28px; }
-  .opt input { vertical-align: -2px; }
-  #askMic { float: left; width: 28px; height: 28px; border-radius: 14px; background: #3a3a3c; margin-right: 8px; position: relative; display: none; }
+  .btn.primary { background: #0a84ff; }
+  #askMic { float: left; width: 30px; height: 30px; border-radius: 15px; background: #3a3a3c; margin-right: 8px; position: relative; display: none; }
   #askMic.live { background: #ff453a; }
-  #askMic svg { position: absolute; left: 7px; top: 5px; }
+  #askMic svg { position: absolute; left: 8px; top: 6px; }
   #edit .sheet { left: 8px; right: 8px; width: auto; margin-left: 0; top: 8px; bottom: 8px; padding: 10px 10px 0; }
-  #filter { position: absolute; left: 10px; right: 150px; top: 10px; height: 28px; box-sizing: border-box; border: 0; border-radius: 9px;
+  #filter { position: absolute; left: 10px; right: 160px; top: 10px; height: 30px; box-sizing: border-box; border: 0; border-radius: 9px;
     background: #2c2c2e; color: #fff; padding: 0 10px; font-size: 13px; outline: none; -webkit-user-select: text; }
   #edit .btns { position: absolute; right: 10px; top: 10px; margin: 0; }
-  #editCount { position: absolute; left: 12px; top: 44px; font-size: 10px; color: #8e8e93; }
-  #editList { position: absolute; left: 6px; right: 6px; top: 60px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
-  .erow { height: 34px; position: relative; border-bottom: .5px solid rgba(255,255,255,.08); }
-  .erow img { position: absolute; left: 30px; top: 4px; width: 26px; height: 26px; }
-  .erow .nm { position: absolute; left: 64px; right: 40px; top: 9px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .erow .ck { position: absolute; left: 4px; top: 8px; width: 18px; height: 18px; border-radius: 9px; box-shadow: inset 0 0 0 1.5px #48484a;
+  #editCount { position: absolute; left: 12px; top: 46px; font-size: 10px; color: #8e8e93; }
+  #editList { position: absolute; left: 6px; right: 6px; top: 62px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
+  .erow { height: 36px; position: relative; border-bottom: .5px solid rgba(255,255,255,.08); }
+  .erow img { position: absolute; left: 30px; top: 4px; width: 28px; height: 28px; }
+  .erow .nm { position: absolute; left: 66px; right: 40px; top: 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .erow .ck { position: absolute; left: 4px; top: 9px; width: 18px; height: 18px; border-radius: 9px; box-shadow: inset 0 0 0 1.5px #48484a;
     text-align: center; line-height: 18px; font-size: 11px; font-weight: 700; color: #fff; }
   .erow.on .ck { background: #0a84ff; box-shadow: none; }
-  .erow .up { position: absolute; right: 4px; top: 4px; width: 30px; height: 26px; line-height: 26px; text-align: center; color: #8e8e93; }
+  .erow .up { position: absolute; right: 4px; top: 5px; width: 30px; height: 26px; line-height: 26px; text-align: center; color: #8e8e93; }
   .erow.full { opacity: .35; }
 
-  #toast { position: absolute; left: 50%; top: 38px; -webkit-transform: translateX(-50%); transform: translateX(-50%); z-index: 20;
-    background: rgba(44,44,46,.95); padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap; display: none; }
+  #toast { position: absolute; left: 50%; top: 14px; -webkit-transform: translateX(-50%); transform: translateX(-50%); z-index: 20;
+    background: rgba(58,58,60,.96); padding: 7px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; white-space: nowrap; display: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,.5); }
   #login .sheet { top: 40px; text-align: center; }
   #code { width: 70%; height: 32px; border: 0; border-radius: 9px; background: #2c2c2e; color: #fff; text-align: center; font-size: 16px; }
 </style>
@@ -177,27 +169,38 @@
 <div id="stage">
   <div id="toast"></div>
 
-  <!-- The deck: 8 keys + widgets -->
-  <div id="deck" class="view on">
-    <div id="keys"></div>
-    <div id="hint">Hold any key to choose apps</div>
-    <div id="music" class="card">
+  <div id="rail">
+    <div id="rClock"><span id="time">–</span><span id="ampm"></span><span id="link"></span></div>
+    <div id="rDock"></div>
+    <div class="rhome" id="rHome"></div>
+  </div>
+
+  <!-- Dashboard: now playing + Internet + Batteries -->
+  <div id="dash" class="view">
+    <div id="music" class="tile">
       <div id="mNote">♪</div><img id="mArt" class="none" alt="">
-      <div id="mInfo"><div id="mTitle">Nothing playing</div><div id="mArtist">Spotify or Apple Music</div></div>
+      <div id="mInfo"><div id="mApp">Now Playing</div><div id="mTitle">Nothing playing</div><div id="mArtist">Spotify or Apple Music</div></div>
       <div id="mProg"><i id="mProgFill"></i></div>
+      <div id="mTimes"><span id="mLeft"></span><b id="mPos"></b></div>
       <div id="mBtns">
-        <div class="mb" id="mPrev"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 3v10M12.5 3.6v8.8L5.8 8z" fill="#f5f5f7" stroke="#f5f5f7" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
-        <div class="mb play" id="mPlay"></div>
-        <div class="mb" id="mNext"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M12.5 3v10M3.5 3.6v8.8L10.2 8z" fill="#f5f5f7" stroke="#f5f5f7" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="mb" id="mPrev"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg></div>
+        <div class="mb" id="mPlay"></div>
+        <div class="mb" id="mNext"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M2 2l12 8-12 8zM16 2l12 8-12 8z" fill="#fff"/></svg></div>
       </div>
     </div>
-    <div id="net" class="card">
+    <div id="net" class="tile">
       <h3 id="netTitle">Internet</h3>
-      <div class="big"><span class="arrow">↓</span> <span id="down">–</span><small>Mbps</small></div>
-      <div class="sub"><span class="arrow up">↑</span> <span id="up">–</span> Mbps · <span id="ping">–</span> ms</div>
+      <div class="big" id="netBig"><span class="arrow">↓</span> <span id="down">–</span><small>Mbps</small></div>
+      <div class="sub" id="netSub"><span class="arrow up">↑</span> <span id="up">–</span> Mbps · <span id="ping">–</span> ms</div>
       <canvas id="spark" width="208" height="36"></canvas>
     </div>
-    <div id="bat" class="card"><h3>Batteries</h3><div id="batList"></div></div>
+    <div id="bat" class="tile"><h3>Batteries</h3><div id="batList"></div></div>
+  </div>
+
+  <!-- Home screen: the chosen apps, Take note, and Phone -->
+  <div id="apps" class="view">
+    <div id="grid"></div>
+    <div id="hint">Hold an icon to choose apps</div>
   </div>
 
   <!-- Modern iPhones only: camera + mic to the Mac (needs HTTPS) -->
@@ -217,13 +220,7 @@
     </div>
   </div>
 
-  <div id="status">
-    <div id="clock"><span id="time">–</span><span id="ampm"></span><span id="date"></span></div>
-    <div id="seg"><div data-view="deck" class="on">Deck</div><div data-view="phone">Phone</div></div>
-    <div id="right"><span id="link"></span><span id="macName">Mac</span><span id="phoneBatt" style="display:none"><span class="batt"><i id="phoneBattFill"></i></span></span></div>
-  </div>
-
-  <!-- Ask Claude -->
+  <!-- Take note -->
   <div id="claude" class="scrim">
     <div class="sheet">
       <h2><span class="dot"></span>Take a note <small>· starts a new Claude chat</small></h2>
@@ -259,7 +256,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var APP_SLOTS = 7;   // 8 keys: 7 apps + Ask Claude
+  var APP_SLOTS = 7;   // home screen: 7 apps + Take note (+ Phone on modern iPhones)
   var modern = 'isSecureContext' in window;   // iOS 11.1+; the 4S is never "modern"
 
   // ---------- plumbing ----------
@@ -299,9 +296,11 @@
 
   // ---------- layout ----------
   // Landscape: the stage is 320pt tall and as wide as the screen's shape (480 on a 4S, ~700 on an iPhone 17).
-  // Portrait (modern phones held upright): 360pt wide, keys on top, widgets below.
+  // A rail on the left (time, recent apps, Take note, home button); the dashboard or app grid fills the rest.
+  // Portrait (modern phones held upright): 360pt wide, the rail becomes a bar along the bottom.
   // The stage sits inside the safe area; the page background fills the rest of the screen.
-  var W = 480, H = 320, portrait = false;
+  var W = 480, H = 320, portrait = false, RAIL = 78, BAR = 82;
+  var main = { x: 0, y: 0, w: 0, h: 0 };
   function insets() {
     var cs = window.getComputedStyle($('safe'));
     return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0,
@@ -321,86 +320,116 @@
     layout();
   }
   function layout() {
-    // Compact widgets: Internet (number + small graph) and Batteries (icon + %), stacked in one narrow column.
-    var net = $('net'), bat = $('bat'), cardW, netH = 104, batH;
-    net.className = bat.className = 'card';
-    $('hint').style.display = 'none';
+    var rail = $('rail');
     if (portrait) {
-      // Everything in one centered stack: keys, now playing, then the two widgets side by side.
-      var stackH = 208 + 8 + 58 + 12 + netH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
-      $('seg').style.top = '50px';
-      px($('keys'), { left: (W - 316) / 2, top: top });
-      px($('music'), { left: 16, top: top + 208 + 4, width: W - 32 });
-      cardW = (W - 42) / 2; batH = netH;
-      var cardTop = top + 208 + 4 + 58 + 12;
-      px(net, { left: 16, top: cardTop, width: cardW, height: netH });
-      px(bat, { left: 16 + cardW + 10, top: cardTop, width: cardW });
-      var pvH = Math.round((W - 32) * 3 / 4);
-      px($('pvBox'), { left: 16, top: 72, width: W - 32, height: pvH });
-      px($('pCtl'), { left: 16, top: 72 + pvH + 14, width: W - 32 });
+      rail.className = 'bar';
+      px(rail, { left: 0, top: H - BAR, width: W, height: BAR });
+      main = { x: 12, y: 12, w: W - 24, h: H - BAR - 24 };
     } else {
-      $('seg').style.top = '11px';
-      cardW = W >= 640 ? 150 : 128;
-      var right = W - 16, colLeft = right - cardW;
-      var keysArea = colLeft - 16 - 16;                       // left column: keys on top, now playing below
-      var keysLeft = 16 + Math.max(0, (keysArea - 316) / 2);
-      px($('keys'), { left: keysLeft, top: 52 });
-      px($('music'), { left: 16, top: 252, width: Math.max(316, keysArea) });
-      batH = 304 - (52 + netH + 10);
-      px(net, { left: colLeft, top: 52, width: cardW, height: netH });
-      px(bat, { left: colLeft, top: 52 + netH + 10, width: cardW });
-      var ctlW = W >= 640 ? 180 : 150;
-      px($('pvBox'), { left: 16, top: 42, width: W - 32 - ctlW - 12, height: 264 });
-      px($('pCtl'), { left: W - 16 - ctlW, top: 42, width: ctlW });
+      rail.className = '';
+      px(rail, { left: 0, top: 0, width: RAIL, height: H });
+      main = { x: RAIL + 10, y: 10, w: W - RAIL - 20, h: H - 20 };
     }
-    batteryRows = Math.max(2, Math.floor((batH - 40) / 30)) * 2;   // max chips that fit, two per row
-    var spark = $('spark'), sw = cardW - 24, sh = 18;
+    $('toast').style.left = main.x + main.w / 2 + 'px';
+    layoutDash(); layoutGrid(); layoutPhone(); renderDock();
+  }
+  function layoutDash() {
+    var mu = $('music'), net = $('net'), bat = $('bat'), muW, muH, colX, colY, colW, netH, batH;
+    if (portrait) {
+      // One stack, vertically centred: now playing on top, the two small tiles side by side below.
+      muW = main.w; muH = Math.min(280, Math.round(main.h * 0.55));
+      netH = batH = Math.min(170, main.h - muH - 10);
+      var y0 = main.y + Math.max(0, Math.round((main.h - muH - 10 - netH) / 2));
+      colW = (main.w - 10) / 2; colY = y0 + muH + 10;
+      px(mu, { left: main.x, top: y0, width: muW, height: muH });
+      px(net, { left: main.x, top: colY, width: colW, height: netH });
+      px(bat, { left: main.x + colW + 10, top: colY, width: colW, height: batH });
+    } else {
+      muW = Math.round(main.w * 0.56); muH = main.h;
+      colX = main.x + muW + 10; colW = main.w - muW - 10;
+      netH = Math.round((main.h - 10) / 2); batH = main.h - netH - 10;
+      px(mu, { left: main.x, top: main.y, width: muW, height: muH });
+      px(net, { left: colX, top: main.y, width: colW, height: netH });
+      px(bat, { left: colX, top: main.y + netH + 10, width: colW, height: batH });
+    }
+    // Now playing: artwork top-left, title beside it, progress and transport along the bottom.
+    var a = Math.max(56, Math.min(Math.round(muW * 0.42), muH - 132));
+    px($('mArt'), { left: 14, top: 14, width: a, height: a });
+    px($('mNote'), { left: 14, top: 14, width: a, height: a, lineHeight: a, fontSize: Math.round(a / 2.4) });
+    px($('mInfo'), { left: 14 + a + 14, top: 16, width: muW - a - 42 });
+    var progTop = 14 + a + Math.max(14, Math.round((muH - a - 14 - 70) / 2));
+    px($('mProg'), { left: 14, top: progTop, width: muW - 28 });
+    px($('mTimes'), { left: 14, top: progTop + 9, width: muW - 28 });
+    px($('mBtns'), { left: 14, bottom: 10, width: muW - 28 });
+    // Internet: big number, details, and a live graph filling the rest.
+    px($('netBig'), { top: 34 }); px($('netSub'), { top: 70 });
+    var spark = $('spark'), sw = colW - 28, sh = Math.max(16, Math.min(64, netH - 104));
     spark.width = sw * 2; spark.height = sh * 2;
-    px(spark, { width: sw, height: sh });
+    px(spark, { width: sw, height: sh, top: netH - sh - 12 });
+    $('spark').style.display = netH >= 120 ? 'block' : 'none';
+    batteryRows = Math.max(1, Math.floor((batH - 44) / 30)) * 2;   // chips that fit, two per row
     drawSpark(lastHistory); renderBatteries(lastBatteries);
+  }
+  function layoutPhone() {
+    if (portrait) {
+      var pvH = Math.round(main.w * 3 / 4);
+      px($('pvBox'), { left: main.x, top: main.y, width: main.w, height: pvH });
+      px($('pCtl'), { left: main.x, top: main.y + pvH + 12, width: main.w });
+    } else {
+      var ctlW = main.w >= 560 ? 180 : 150;
+      px($('pvBox'), { left: main.x, top: main.y, width: main.w - ctlW - 10, height: main.h });
+      px($('pCtl'), { left: main.x + main.w - ctlW, top: main.y, width: ctlW });
+    }
+    px($('pSetup'), { left: main.x, top: main.y, width: main.w });
   }
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
 
-  // ---------- views (Deck, plus Phone on modern iPhones) ----------
-  var view = 'deck';
+  // ---------- views: dashboard, home screen, Phone ----------
+  var view = 'dash';
+  var DASH_SVG = '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="1" y="1" width="13" height="22" rx="3" fill="#fff"/>' +
+    '<rect x="16" y="1" width="7" height="10" rx="2.5" fill="#fff"/><rect x="16" y="13" width="7" height="10" rx="2.5" fill="#fff"/></svg>';
+  var GRID_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">' +
+    '<rect x="1" y="1" width="6" height="6" rx="1.8"/><rect x="9" y="1" width="6" height="6" rx="1.8"/><rect x="17" y="1" width="6" height="6" rx="1.8"/>' +
+    '<rect x="1" y="9" width="6" height="6" rx="1.8"/><rect x="9" y="9" width="6" height="6" rx="1.8"/><rect x="17" y="9" width="6" height="6" rx="1.8"/>' +
+    '<rect x="1" y="17" width="6" height="6" rx="1.8"/><rect x="9" y="17" width="6" height="6" rx="1.8"/><rect x="17" y="17" width="6" height="6" rx="1.8"/></svg>';
   function show(name) {
     view = name;
-    $('deck').className = 'view' + (name === 'deck' ? ' on' : '');
+    $('dash').className = 'view' + (name === 'dash' ? ' on' : '');
+    $('apps').className = 'view' + (name === 'apps' ? ' on' : '');
     $('phone').className = 'view' + (name === 'phone' ? ' on' : '');
-    var segs = $('seg').children;
-    for (var i = 0; i < segs.length; i++) segs[i].className = segs[i].getAttribute('data-view') === name ? 'on' : '';
+    // The home button flips between the home screen and the dashboard (from Phone it goes home).
+    $('rHome').innerHTML = name === 'apps' ? DASH_SVG : GRID_SVG;
     if (name === 'phone') phoneEnter(); else pollStats();
     store('view', name);
   }
-  if (modern) {
-    $('seg').style.display = 'block';
-    var segs = $('seg').children;
-    for (var i = 0; i < segs.length; i++) (function (s) { tap(s, function () { show(s.getAttribute('data-view')); }); })(segs[i]);
-  }
+  tap($('rHome'), function () { show(view === 'apps' ? 'dash' : 'apps'); });
   function sheet(id, on) { $(id).className = 'scrim' + (on ? ' on' : ''); }
-  window.deckHome = function () { sheet('claude', false); sheet('edit', false); show('deck'); };
+  window.deckHome = function () { sheet('claude', false); sheet('edit', false); show('dash'); };
 
   // ---------- clock ----------
-  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function tick() {
     var d = new Date();
     // Keep the device's 12/24h preference: split "1:31:05 AM" into "1:31" + "AM".
     var m = /(\d{1,2}[:.]\d{2})(?:[:.]\d{2})?\s*([^\d\s]*)/.exec(d.toLocaleTimeString()) || [];
     $('time').textContent = m[1] || (d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2));
     $('ampm').textContent = m[2] || '';
-    $('date').textContent = DAYS[d.getDay()] + ' · ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
   }
   setInterval(tick, 10000);
 
-  // ---------- keys ----------
+  // ---------- apps ----------
   var launcher = { selected: null, all: [] };
   // A notepad with a pencil: quick capture that becomes a Claude conversation.
-  var CLAUDE_SVG = '<svg width="36" height="36" viewBox="0 0 36 36">' +
-    '<rect x="7" y="5" width="19" height="26" rx="4.5" fill="#fff"/>' +
-    '<path d="M11.5 13h10M11.5 18h10M11.5 23h6" stroke="#c55e39" stroke-width="2.2" stroke-linecap="round"/>' +
-    '<path d="M24 26.5l6.5-6.5 2.5 2.5-6.5 6.5-3.3.8z" fill="#fff" stroke="#c55e39" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  function noteSvg(s) {
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 36 36" style="margin:' + (-s / 2) + 'px 0 0 ' + (-s / 2) + 'px">' +
+      '<rect x="7" y="5" width="19" height="26" rx="4.5" fill="#fff"/>' +
+      '<path d="M11.5 13h10M11.5 18h10M11.5 23h6" stroke="#f2700c" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<path d="M24 26.5l6.5-6.5 2.5 2.5-6.5 6.5-3.3.8z" fill="#fff" stroke="#f2700c" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  }
+  function camSvg(s) {
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 36 36" style="margin:' + (-s / 2) + 'px 0 0 ' + (-s / 2) + 'px">' +
+      '<rect x="3" y="10" width="22" height="16" rx="4" fill="#fff"/><path d="M26 15.5l7-4v13l-7-4z" fill="#fff"/></svg>';
+  }
   function byPath(p) {
     for (var i = 0; i < launcher.all.length; i++) if (launcher.all[i].path === p) return launcher.all[i];
     return null;
@@ -409,35 +438,97 @@
     xhr('GET', url('/launcher'), null, function (s, text) {
       if (s !== 200) return;
       launcher = JSON.parse(text);
-      renderKeys();
+      renderGrid(); renderDock();
     });
   }
-  function key(cls, label, inner, onTap, onHold) {
-    var k = document.createElement('div');
-    k.className = 'key ' + cls;
-    k.innerHTML = '<div class="cap">' + inner + '</div><div class="label"></div>';
-    k.lastChild.textContent = label;
-    tap(k, onTap, onHold);
-    return k;
-  }
-  function renderKeys() {
-    var box = $('keys'), apps = [];
+  function chosenApps() {
+    var apps = [];
     (launcher.selected || []).forEach(function (p) { var a = byPath(p); if (a && apps.length < APP_SLOTS) apps.push(a); });
+    return apps;
+  }
+  function iconImg(a) { return '<img src="' + url('/icon', 'path=' + encodeURIComponent(a.path)) + '">'; }
+  function launch(a) {
+    xhr('POST', url('/launch'), 'path=' + encodeURIComponent(a.path), function (s) { toast(s === 200 ? 'Opening ' + a.name : 'Launch failed'); });
+    // Remember it for the rail's recent apps.
+    var recent = recentPaths().filter(function (p) { return p !== a.path; });
+    recent.unshift(a.path);
+    store('recent', JSON.stringify(recent.slice(0, 6)));
+    renderDock();
+  }
+  function takeNoteHold() { xhr('POST', url('/claude'), 'text=', function () { toast('Claude is open on the Mac'); }); }
+
+  // Home screen grid: 7 apps, Take note, and Phone (modern iPhones), sized to the space available.
+  var gridItems = [];
+  function renderGrid() {
+    var apps = chosenApps();
+    gridItems = [];
+    for (var i = 0; i < APP_SLOTS; i++) gridItems.push(apps[i] ? { app: apps[i] } : { empty: true });
+    gridItems.push({ note: true });
+    if (modern) gridItems.push({ phone: true });
+    var box = $('grid');
     box.innerHTML = '';
-    for (var i = 0; i < APP_SLOTS; i++) {
-      (function (a) {
-        if (!a) { box.appendChild(key('empty', 'Add', '', openEditor, openEditor)); return; }
-        box.appendChild(key('', a.name, '<img src="' + url('/icon', 'path=' + encodeURIComponent(a.path)) + '">', function () {
-          xhr('POST', url('/launch'), 'path=' + encodeURIComponent(a.path), function (s) { toast(s === 200 ? 'Opening ' + a.name : 'Launch failed'); });
-        }, openEditor));
-      })(apps[i]);
-    }
-    box.appendChild(key('claude', 'Take note', CLAUDE_SVG, openClaude, function () {
-      xhr('POST', url('/claude'), 'text=', function () { toast('Claude is open on the Mac'); });
-    }));
+    gridItems.forEach(function (it) {
+      var el = document.createElement('div');
+      el.className = 'app' + (it.empty ? ' empty' : '');
+      el.innerHTML = '<div class="ic' + (it.note ? ' note-ic' : it.phone ? ' phone-ic' : '') + '"></div><div class="label"></div>';
+      el.lastChild.textContent = it.app ? it.app.name : it.note ? 'Take note' : it.phone ? 'Phone' : 'Add';
+      if (it.app) { el.firstChild.innerHTML = iconImg(it.app); tap(el, function () { launch(it.app); }, openEditor); }
+      else if (it.note) tap(el, openClaude, takeNoteHold);
+      else if (it.phone) tap(el, function () { show('phone'); });
+      else tap(el, openEditor, openEditor);
+      it.el = el;
+      box.appendChild(el);
+    });
+    layoutGrid();
+  }
+  function layoutGrid() {
+    var n = gridItems.length;
+    if (!n) return;
+    var cols = portrait ? 4 : Math.min(5, Math.max(4, Math.floor(main.w / 104)));
+    var rows = Math.ceil(n / cols);
+    var colW = Math.floor(main.w / cols), rowH = Math.min(124, Math.floor((main.h - 24) / rows));
+    var ic = Math.max(44, Math.min(72, rowH - 30, colW - 26)), r = Math.round(ic * 0.225);
+    var top = main.y + Math.max(0, Math.round((main.h - 20 - rows * rowH) / 2));
+    gridItems.forEach(function (it, i) {
+      var c = i % cols, rw = Math.floor(i / cols);
+      var inRow = Math.min(cols, n - rw * cols), left = main.x + Math.round((main.w - inRow * colW) / 2);
+      px(it.el, { left: left + c * colW, top: top + rw * rowH + Math.round((rowH - ic - 22) / 2), width: colW });
+      var box = it.el.firstChild;
+      px(box, { width: ic, height: ic, borderRadius: r });
+      if (it.note) box.innerHTML = noteSvg(Math.round(ic * 0.6));
+      if (it.phone) box.innerHTML = camSvg(Math.round(ic * 0.55));
+    });
+    px($('hint'), { left: main.x, width: main.w, top: main.y + main.h - 14 });
   }
 
-  // ---------- editor (hold any key) ----------
+  // Rail: the most recently opened apps (topped up with the first chosen ones), then Take note.
+  function recentPaths() { try { return JSON.parse(store('recent') || '[]') || []; } catch (e) { return []; } }
+  function renderDock() {
+    var dock = $('rDock'), slots = portrait ? 3 : Math.max(1, Math.min(3, Math.floor((H - 66 - 62 + 12) / 62)));
+    var chosen = chosenApps(), list = [];
+    recentPaths().forEach(function (p) {
+      var a = byPath(p);
+      if (a && list.length < slots - 1 && (launcher.selected || []).indexOf(p) >= 0) list.push(a);
+    });
+    chosen.forEach(function (a) { if (list.length < slots - 1 && list.indexOf(a) < 0) list.push(a); });
+    dock.innerHTML = '';
+    list.forEach(function (a) {
+      var el = document.createElement('div');
+      el.className = 'ricon';
+      el.innerHTML = iconImg(a);
+      tap(el, function () { launch(a); }, openEditor);
+      dock.appendChild(el);
+    });
+    var note = document.createElement('div');
+    note.className = 'ricon note-ic';
+    note.innerHTML = noteSvg(30);
+    tap(note, openClaude, takeNoteHold);
+    dock.appendChild(note);
+    if (portrait) px(dock, { width: (list.length + 1) * 62, marginLeft: -(list.length + 1) * 31 });
+    else { dock.style.width = ''; dock.style.marginLeft = ''; }
+  }
+
+  // ---------- editor (hold any app) ----------
   var draft = [];
   function openEditor() {
     draft = (launcher.selected || []).slice(0, APP_SLOTS);
@@ -448,7 +539,7 @@
   function renderEditor() {
     var box = $('editList'), q = $('filter').value.toLowerCase();
     box.innerHTML = '';
-    $('editCount').textContent = draft.length + ' of ' + APP_SLOTS + ' keys · ▲ moves an app earlier';
+    $('editCount').textContent = draft.length + ' of ' + APP_SLOTS + ' apps · ▲ moves an app earlier';
     var chosen = draft.map(byPath).filter(function (a) { return a; });
     var rest = launcher.all.filter(function (a) { return draft.indexOf(a.path) < 0; });
     chosen.concat(rest).forEach(function (a) {
@@ -464,7 +555,7 @@
       });
       row.addEventListener('click', function () {
         if (on) draft.splice(idx, 1);
-        else if (full) return toast('All 7 keys are used: remove one first');
+        else if (full) return toast('All 7 apps are used: remove one first');
         else draft.push(a.path);
         renderEditor();
       });
@@ -477,11 +568,11 @@
     xhr('POST', url('/launcher'), 'paths=' + encodeURIComponent(draft.join('\n')), function (s) {
       if (s !== 200) return toast('Save failed');
       launcher.selected = draft.slice();
-      renderKeys(); sheet('edit', false); toast('Keys saved');
+      renderGrid(); renderDock(); sheet('edit', false); toast('Apps saved');
     });
   });
 
-  // ---------- Ask Claude ----------
+  // ---------- Take note ----------
   // Modern iPhone over HTTPS: Safari's speech recognition starts listening right away.
   // Otherwise (the 4S): focus the field so the keyboard's 🎤 dictation key is one tap away.
   var ask = $('askText');
@@ -546,7 +637,7 @@
       var x = i * w / (lastHistory.length - 1), y = h - 3 - (v / max) * (h - 6);
       if (i) g.lineTo(x, y); else g.moveTo(x, y);
     });
-    g.strokeStyle = '#64d2ff'; g.lineWidth = 2.5; g.lineJoin = 'round'; g.stroke();
+    g.strokeStyle = '#64d2ff'; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke();
     g.lineTo(w, h); g.lineTo(0, h); g.closePath();
     var grad = g.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(100,210,255,.35)'); grad.addColorStop(1, 'rgba(100,210,255,0)');
@@ -567,14 +658,7 @@
       (ICONS[kind] || ICONS.keyboard) + '</svg>';
   }
   var phone = null, batteryRows = 4;   // phone: the device's own battery, when the browser exposes it
-  window.deckPhone = function (s) { phone = s; renderPhone(); renderBatteries(lastBatteries); };
-  function renderPhone() {
-    if (!phone) return;
-    $('phoneBatt').style.display = '';
-    var f = $('phoneBattFill'), pct = Math.round(phone.level * 100);
-    f.style.width = Math.max(1, pct * 16 / 100) + 'px';
-    f.style.background = phone.charging ? '#30d158' : pct <= 20 ? '#ff453a' : '#fff';
-  }
+  window.deckPhone = function (s) { phone = s; renderBatteries(lastBatteries); };
   // Modern Safari can read its own battery via the Battery API where available; harmless elsewhere.
   if (navigator.getBattery) navigator.getBattery().then(function (b) {
     function upd() { window.deckPhone({ level: b.level, charging: b.charging }); }
@@ -586,17 +670,14 @@
     var rows = lastBatteries.slice();
     if (phone) rows.unshift({ name: 'iPhone', kind: 'phone', level: Math.round(phone.level * 100), charging: phone.charging });
     var box = $('batList');
-    if (!rows.length) { box.innerHTML = '<div class="empty-note">No devices reporting</div>'; $('bat').style.height = '64px'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="empty-note">No devices reporting</div>'; return; }
     box.innerHTML = '';
     var chips = [];
     rows.forEach(function (b) {
       chips.push({ kind: b.kind, level: b.level, charging: b.charging, name: b.name });
       if (b['case'] !== undefined) chips.push({ kind: 'case', level: b['case'], name: b.name + ' case' });
     });
-    chips = chips.slice(0, batteryRows);
-    // Shrink the card to fit: title + one 30pt row per two chips.
-    $('bat').style.height = (34 + Math.ceil(chips.length / 2) * 30 + 6) + 'px';
-    chips.forEach(function (b) {
+    chips.slice(0, batteryRows).forEach(function (b) {
       var c = document.createElement('div');
       c.className = 'chip';
       c.title = b.name;
@@ -608,18 +689,16 @@
     });
   }
   function pollStats() {
-    if (view !== 'deck') return;
+    if (view === 'phone') return;
     xhr('GET', url('/stats'), null, function (s, text) {
       $('link').className = s === 200 ? 'ok' : '';
       if (s !== 200) return;
       var d = JSON.parse(text);
-      $('macName').textContent = d.mac.replace(/^\S+['’]s?\s+/, '');
       var sp = d.speed || {};
       $('down').textContent = sp.down !== undefined ? fmt(sp.down) : '–';
       $('up').textContent = sp.up !== undefined ? fmt(sp.up) : '–';
       $('ping').textContent = sp.ping !== undefined ? Math.round(sp.ping) : '–';
-      $('net').title = sp.at ? 'Tested ' + ago(sp.at) : '';
-      $('netTitle').textContent = sp.running ? 'Testing…' : 'Internet';
+      $('netTitle').innerHTML = sp.running ? 'Testing… ' : 'Internet <i>· ' + (sp.at ? ago(sp.at) : 'tap to test') + '</i>';
       drawSpark(d.net.history);
       renderBatteries(d.batteries);
       renderMusic(d.music);
@@ -631,14 +710,16 @@
   });
 
   // ---------- now playing (Spotify / Apple Music on the Mac) ----------
-  var PLAY = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M5 3v10l8-5z" fill="#111"/></svg>';
-  var PAUSE = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 3h2.6v10H4.5zM8.9 3h2.6v10H8.9z" fill="#111"/></svg>';
+  var PLAY = '<svg width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -13px"><path d="M6 3v24l21-12z" fill="#fff"/></svg>';
+  var PAUSE = '<svg width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -15px"><path d="M6 3h6.5v24H6zM17.5 3H24v24h-6.5z" fill="#fff"/></svg>';
   var track = { playing: false, position: 0, duration: 0, at: 0 }, artKey = '';
   function setPlayIcon(playing) { $('mPlay').innerHTML = playing ? PAUSE : PLAY; }
+  function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function renderMusic(m) {
     m = m || {};
+    $('mApp').textContent = m.app ? m.app : 'Now Playing';
     $('mTitle').textContent = m.title || 'Nothing playing';
-    $('mArtist').textContent = m.title ? (m.artist || '') + (m.app ? ' · ' + m.app : '') : 'Spotify or Apple Music';
+    $('mArtist').textContent = m.title ? (m.artist || '') : 'Spotify or Apple Music';
     track = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now() };
     setPlayIcon(track.playing);
     var key = m.id && m.hasArt ? m.id : '';
@@ -650,9 +731,11 @@
     tickProgress();
   }
   function tickProgress() {
-    if (!track.duration) { $('mProgFill').style.width = '0'; return; }
-    var pos = track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0);
-    $('mProgFill').style.width = Math.min(100, pos / track.duration * 100) + '%';
+    if (!track.duration) { $('mProgFill').style.width = '0'; $('mPos').textContent = $('mLeft').textContent = ''; return; }
+    var pos = Math.min(track.duration, track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0));
+    $('mProgFill').style.width = pos / track.duration * 100 + '%';
+    $('mPos').textContent = clock(pos);
+    $('mLeft').textContent = '-' + clock(track.duration - pos);
   }
   setInterval(tickProgress, 1000);
   function media(cmd) {
@@ -664,7 +747,7 @@
   tap($('mInfo'), function () { media('open'); toast('Opening the player on the Mac'); });
   setPlayIcon(false);
 
-  // ---------- Phone tab: camera + mic to the Mac over a secure WebSocket ----------
+  // ---------- Phone app: camera + mic to the Mac over a secure WebSocket ----------
   // Messages: 1 type byte + payload. 'H' token, 'V' JPEG frame, 'A' 16 kHz mono s16le PCM.
   // The Mac turns 'V' into its /camera.mjpg feed (OBS) and plays 'A' into BlackHole (the mic).
   // Ports: plain http = base, https = base+2, secure WebSocket = base+3.
@@ -782,7 +865,8 @@
       if (s !== 200) { $('link').className = ''; setTimeout(connect, 2000); return; }
       sheet('login', false);
       loadKeys();
-      show(modern && store('view') === 'phone' ? 'phone' : 'deck');
+      var last = store('view');
+      show(last === 'apps' || (modern && last === 'phone') ? last : 'dash');
       if (/edit/.test(location.search)) setTimeout(openEditor, 300);
     });
   }
@@ -790,7 +874,7 @@
     token = $('code').value.replace(/\s/g, '').toLowerCase();
     store('token', token); location.hash = 'k=' + token; connect();
   });
-  fit(); tick(); connect();
+  renderGrid(); fit(); tick(); connect();
 })();
 </script>
 </body>

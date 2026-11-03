@@ -15,9 +15,18 @@ enum LocalTLS {
     static func identity(for ip: String) -> sec_identity_t? {
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            if !exists("ca.key") || !exists("ca.pem") { try makeCA() }
+            // The CA is name-constrained to this Mac's address, so it is re-created when the address changes.
+            let caStamp = (try? String(contentsOf: dir.appendingPathComponent("ca.ip"), encoding: .utf8)) ?? ""
+            var newCA = false
+            if !exists("ca.key") || !exists("ca.pem") || caStamp != ip {
+                if exists("ca.pem") {
+                    print("⚠️  New OldPhoneDeck CA for \(ip): reinstall the profile on the iPhone (remove the old one first).")
+                }
+                try makeCA(ip: ip)
+                newCA = true
+            }
             let stamp = (try? String(contentsOf: dir.appendingPathComponent("server.ip"), encoding: .utf8)) ?? ""
-            if !exists("server.p12") || stamp != ip { try makeServerCert(ip: ip) }
+            if newCA || !exists("server.p12") || stamp != ip { try makeServerCert(ip: ip) }
             return try loadIdentity()
         } catch {
             print("⚠️  HTTPS disabled: \(error.localizedDescription)")
@@ -46,16 +55,23 @@ enum LocalTLS {
         }
     }
 
-    private static func makeCA() throws {
+    private static func makeCA(ip: String) throws {
         // Self-signed via an explicit extfile: LibreSSL's "-extensions v3_ca" depends on the system openssl.cnf.
-        try "basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n"
-            .write(to: dir.appendingPathComponent("ca.ext"), atomically: true, encoding: .utf8)
+        // nameConstraints: a phone that trusts this CA accepts certificates only for this Mac, not for any website.
+        let ext = """
+        basicConstraints=critical,CA:TRUE
+        keyUsage=critical,keyCertSign,cRLSign
+        subjectKeyIdentifier=hash
+        nameConstraints=critical,permitted;IP:\(ip)/255.255.255.255,permitted;IP:127.0.0.1/255.255.255.255,permitted;DNS:localhost
+        """
+        try ext.write(to: dir.appendingPathComponent("ca.ext"), atomically: true, encoding: .utf8)
         try openssl(["req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", "ca.key", "-out", "ca.csr",
                      "-subj", "/CN=OldPhoneDeck CA"])
         try openssl(["x509", "-req", "-in", "ca.csr", "-signkey", "ca.key", "-sha256", "-days", "3650",
                      "-extfile", "ca.ext", "-out", "ca.pem"])
         try openssl(["x509", "-in", "ca.pem", "-outform", "der", "-out", "oldphonedeck-ca.cer"])
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: dir.appendingPathComponent("ca.key").path)
+        try ip.write(to: dir.appendingPathComponent("ca.ip"), atomically: true, encoding: .utf8)
     }
 
     private static func makeServerCert(ip: String) throws {

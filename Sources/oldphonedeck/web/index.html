@@ -101,6 +101,13 @@
 
   /* ---- page 1 · Immersive: the cover sets the mood, glass on top ---- */
   #imm { position: absolute; border-radius: 18px; overflow: hidden; background: #111; }
+  /* Wallpaper when nothing is playing: soft colour fields on deep navy. It fades away once a cover is in. */
+  #immWall { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 12% 18%, rgba(94,92,230,.55), rgba(94,92,230,0) 58%),
+                radial-gradient(ellipse at 88% 85%, rgba(10,132,255,.45), rgba(10,132,255,0) 55%),
+                radial-gradient(ellipse at 72% 8%, rgba(191,90,242,.35), rgba(191,90,242,0) 50%), #0b0b16;
+    -webkit-transition: opacity 500ms ease; transition: opacity 500ms ease; }
+  #imm.art #immWall { opacity: 0; }
   #immBg { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; opacity: 0;
     -webkit-filter: blur(36px) saturate(1.5); filter: blur(36px) saturate(1.5);
     -webkit-transition: opacity 500ms ease; transition: opacity 500ms ease; }
@@ -241,7 +248,7 @@
     <!-- Page 1 · Immersive -->
     <div class="page" id="pImm">
       <div id="imm">
-        <img id="immBg" alt=""><div id="immShade"></div>
+        <div id="immWall"></div><img id="immBg" alt=""><div id="immShade"></div>
         <div class="m-note">♪</div><img class="m-art" alt="">
         <div class="m-meta"><div class="m-app">Now Playing</div><div class="m-title">Nothing playing</div><div class="m-artist">Spotify or Apple Music</div></div>
         <div class="m-prog"><i></i></div><div class="m-times tnum"><span class="m-left"></span><b class="m-pos"></b></div><div class="m-hit"></div>
@@ -903,7 +910,7 @@
   });
   function setPlayIcon(playing) { each('m-play', function (e) { e.className = 'mb press m-play' + (playing ? ' playing' : ''); }); }
   each('m-art', function (img) { img.onload = function () { img.className = 'm-art shown'; }; });
-  $('immBg').onload = function () { $('immBg').className = 'shown'; };
+  $('immBg').onload = function () { $('immBg').className = 'shown'; $('imm').className = 'art'; };
   function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function renderMusic(m) {
     m = m || {};
@@ -924,7 +931,7 @@
       // Fade the old cover out; onload fades the new one in (on both pages and in the Immersive background).
       var src = key ? url('/artwork', 'id=' + encodeURIComponent(key)) : '';
       each('m-art', function (img) { img.className = 'm-art'; if (src) img.src = src; });
-      $('immBg').className = ''; if (src) $('immBg').src = src;
+      $('immBg').className = ''; if (src) $('immBg').src = src; else $('imm').className = '';
     }
     tickProgress();
   }
@@ -1147,7 +1154,7 @@
   // because a finished animation would otherwise keep overriding the press transforms.
   function bootIn() {
     var p = $(pages[page].id), items = p.id === 'pApps' ? [].slice.call($('grid').children) : [].slice.call(p.children);
-    if (p.id === 'pImm') items = [].slice.call($('imm').children).filter(function (e) { return e.id !== 'immBg' && e.id !== 'immShade'; });
+    if (p.id === 'pImm') items = [].slice.call($('imm').children).filter(function (e) { return e.id !== 'immBg' && e.id !== 'immShade' && e.id !== 'immWall'; });
     items.forEach(function (el, i) { el.style.webkitAnimationDelay = el.style.animationDelay = i * 40 + 'ms'; el.className += ' rise'; });
     setTimeout(function () {
       items.forEach(function (el) { el.className = el.className.replace(/ rise/g, ''); el.style.webkitAnimationDelay = el.style.animationDelay = ''; });

@@ -15,15 +15,29 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; color: #fff; background: #000;
     font: 13px -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased;
-    -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+    -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0);
+    -webkit-text-size-adjust: 100%; overscroll-behavior: none; touch-action: manipulation; }
+  /* Motion: one vocabulary everywhere (written out, since iOS 9 has no CSS variables).
+     ease-out cubic-bezier(.23,1,.32,1) for entering/press · ease-in-out cubic-bezier(.77,0,.175,1) for movement.
+     Press 160ms, views/toasts ~200-300ms, modals 250ms in / 180ms out. */
   /* Everything is laid out on a stage 320pt tall; its width follows the screen (480 on a 4S, wider on modern phones). */
   #stage { position: absolute; left: 0; top: 0; width: 480px; height: 320px; overflow: hidden;
     -webkit-transform-origin: 0 0; transform-origin: 0 0; }
   /* Measures the notch / Dynamic Island / home-indicator insets (0 on old iOS, which ignores env()). */
   #safe { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-  .view { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: none; }
-  .view.on { display: block; }
+  /* Views crossfade with a hint of scale, so switching reads as one surface replacing another. */
+  .view { position: absolute; left: 0; top: 0; right: 0; bottom: 0; visibility: hidden; opacity: 0;
+    -webkit-transform: scale(.985); transform: scale(.985);
+    -webkit-transition: opacity 180ms cubic-bezier(.23,1,.32,1), -webkit-transform 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms;
+    transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms; }
+  .view.on { visibility: visible; opacity: 1; -webkit-transform: none; transform: none;
+    -webkit-transition-duration: 240ms; transition-duration: 240ms; -webkit-transition-delay: 0s; transition-delay: 0s; }
+  /* Shared press feedback: scale down the instant a finger lands. */
+  .press { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
+    transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }
+  .press.down { -webkit-transform: scale(.94); transform: scale(.94); }
+  .tile.press.down, .pbtn.down, .btn.down { -webkit-transform: scale(.97); transform: scale(.97); }
 
   /* ---- side rail: time, recent apps, Take note, home button (a bottom bar in portrait) ---- */
   #rail { position: absolute; z-index: 5; background: #141416; box-shadow: inset -.5px 0 0 rgba(255,255,255,.08); }
@@ -37,10 +51,14 @@
   #rDock { position: absolute; left: 0; right: 0; top: 66px; }
   .ricon { position: relative; width: 50px; height: 50px; margin: 0 auto 12px; border-radius: 12px; }
   .ricon img { position: absolute; left: -3px; top: -3px; width: 56px; height: 56px; }
-  .ricon.down, .rhome.down { -webkit-transform: scale(.9); transform: scale(.9); opacity: .75; }
   .rhome { position: absolute; left: 50%; bottom: 12px; width: 50px; height: 50px; margin-left: -25px; border-radius: 12px;
     background: #2c2c2e; }
-  .rhome svg { position: absolute; left: 13px; top: 13px; }
+  /* Both glyphs live in the button; the inactive one shrinks away so the swap reads as a morph. */
+  .rhome svg { position: absolute; left: 13px; top: 13px;
+    -webkit-transition: opacity 200ms cubic-bezier(.23,1,.32,1), -webkit-transform 200ms cubic-bezier(.23,1,.32,1);
+    transition: opacity 200ms cubic-bezier(.23,1,.32,1), transform 200ms cubic-bezier(.23,1,.32,1); }
+  .rhome .g-dash, .rhome.dash .g-grid { opacity: 0; -webkit-transform: scale(.6); transform: scale(.6); }
+  .rhome.dash .g-dash { opacity: 1; -webkit-transform: none; transform: none; }
   #rail.bar #rClock { left: 18px; right: auto; top: 50%; margin-top: -16px; text-align: left; }
   #rail.bar #ampm { display: inline; margin-left: 3px; }
   #rail.bar #link { display: block; }
@@ -52,27 +70,37 @@
   .tile { position: absolute; border-radius: 16px; box-sizing: border-box; overflow: hidden; background: #1c1c1e; }
   .tile h3 { margin: 0; position: absolute; left: 14px; top: 12px; font-size: 13px; font-weight: 600; color: #fff; }
   .tile h3 i { font-style: normal; color: #8e8e93; font-weight: 500; }
-  .tile.down { background: #232325; }
 
   /* Now playing */
   #mArt, #mNote { position: absolute; border-radius: 10px; }
-  #mArt { box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-  #mArt.none { visibility: hidden; }
+  /* New artwork fades in once it has loaded, instead of popping. */
+  #mArt { box-shadow: 0 4px 14px rgba(0,0,0,.5); opacity: 0; -webkit-transition: opacity 300ms ease; transition: opacity 300ms ease; }
+  #mArt.shown { opacity: 1; }
   #mNote { text-align: center; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
   #mInfo { position: absolute; }
   #mApp { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #8e8e93; }
+  #mApp.spotify { color: #1ed760; }
+  #mApp.music { color: #ff375f; }
   #mTitle { margin-top: 5px; font-size: 17px; font-weight: 700; line-height: 21px; letter-spacing: -.3px;
     max-height: 42px; overflow: hidden; }
-  #mArtist { font-size: 13px; color: #ff375f; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mArtist { font-size: 13px; color: #aeaeb2; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #mProg { position: absolute; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
-  #mProg i { display: block; height: 100%; width: 0; background: #fff; border-radius: 2px; }
+  /* Progress glides at constant speed (linear, one tick per second) via scaleX instead of jumping in width. */
+  #mProg i { display: block; height: 100%; width: 100%; background: #fff;
+    -webkit-transform-origin: 0 0; transform-origin: 0 0; -webkit-transform: scaleX(0); transform: scaleX(0);
+    -webkit-transition: -webkit-transform 1s linear; transition: transform 1s linear; }
+  #mProg i.jump { -webkit-transition: none; transition: none; }
   #mTimes { position: absolute; font-size: 10px; font-weight: 600; color: #8e8e93;
     -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
   #mTimes span { float: right; }
   #mBtns { position: absolute; height: 46px; text-align: center; }
   .mb { display: inline-block; position: relative; width: 56px; height: 46px; vertical-align: top; }
   .mb svg { position: absolute; left: 50%; top: 50%; }
-  .mb.down { opacity: .5; }
+  .mb.down { opacity: .6; }
+  #mPlay svg { -webkit-transition: opacity 160ms cubic-bezier(.23,1,.32,1), -webkit-transform 160ms cubic-bezier(.23,1,.32,1);
+    transition: opacity 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1); }
+  #mPlay .i-pause, #mPlay.playing .i-play { opacity: 0; -webkit-transform: scale(.7); transform: scale(.7); }
+  #mPlay.playing .i-pause { opacity: 1; -webkit-transform: none; transform: none; }
 
   /* Internet */
   .big { position: absolute; left: 14px; font-size: 30px; font-weight: 700; letter-spacing: -1px; line-height: 32px; white-space: nowrap; }
@@ -98,7 +126,9 @@
   .ic { position: relative; margin: 0 auto; }
   .ic img { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; }
   .app .label { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app.down .ic { -webkit-transform: scale(.92); transform: scale(.92); opacity: .8; }
+  .app .ic { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
+    transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }
+  .app.down .ic { -webkit-transform: scale(.92); transform: scale(.92); opacity: .85; }
   .app.empty .ic { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.18); }
   .app.empty .ic:after { content: "+"; position: absolute; left: 0; right: 0; top: 50%; margin-top: -19px; font-size: 32px; font-weight: 200; color: #8e8e93; }
   .app.empty .label { color: #8e8e93; }
@@ -118,7 +148,6 @@
   .pbtn.small { height: 40px; padding-top: 12px; }
   .pbtn.on { background: #30d158; }
   .pbtn.on span { color: #e3f9e8; }
-  .pbtn.down { opacity: .7; }
   #pNote { font-size: 9.5px; color: #8e8e93; line-height: 13px; margin-top: 4px; word-break: break-all; }
   #pSetup { position: absolute; border-radius: 16px; padding: 16px; box-sizing: border-box; background: #1c1c1e; display: none; }
   #pSetup h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
@@ -126,15 +155,24 @@
   #pSetup a { color: #0a84ff; }
 
   /* ---- sheets ---- */
-  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 10; display: none; }
-  .scrim.on { display: block; }
+  /* Modals: backdrop fades, sheet scales up from .96 (centred, not anchored to a trigger). Exit is faster than entry. */
+  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 10;
+    visibility: hidden; opacity: 0;
+    -webkit-transition: opacity 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms;
+    transition: opacity 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms; }
+  .scrim.on { visibility: visible; opacity: 1;
+    -webkit-transition: opacity 250ms cubic-bezier(.23,1,.32,1); transition: opacity 250ms cubic-bezier(.23,1,.32,1); }
   .sheet { position: absolute; top: 8px; left: 50%; width: 360px; margin-left: -180px; border-radius: 20px; padding: 14px; box-sizing: border-box;
-    background: #1c1c1e; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1), 0 20px 40px rgba(0,0,0,.6); }
+    background: #1c1c1e; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1), 0 20px 40px rgba(0,0,0,.6);
+    -webkit-transform: scale(.96); transform: scale(.96);
+    -webkit-transition: -webkit-transform 180ms cubic-bezier(.23,1,.32,1); transition: transform 180ms cubic-bezier(.23,1,.32,1); }
+  .scrim.on .sheet { -webkit-transform: none; transform: none;
+    -webkit-transition-duration: 250ms; transition-duration: 250ms; }
   .sheet h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
   .sheet h2 small { font-size: 11px; font-weight: 500; color: #8e8e93; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #ff9f0a; margin-right: 6px; }
   #askText { width: 100%; height: 56px; box-sizing: border-box; border: 0; border-radius: 11px; padding: 8px 10px; resize: none;
-    background: #2c2c2e; color: #fff; font: 14px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
+    background: #2c2c2e; color: #fff; font: 16px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
   .btns { margin-top: 10px; overflow: hidden; }
   .btn { float: right; margin-left: 8px; padding: 0 16px; height: 30px; line-height: 30px; border-radius: 15px; font-size: 12.5px; font-weight: 600;
     background: #3a3a3c; color: #fff; }
@@ -144,7 +182,7 @@
   #askMic svg { position: absolute; left: 8px; top: 6px; }
   #edit .sheet { left: 8px; right: 8px; width: auto; margin-left: 0; top: 8px; bottom: 8px; padding: 10px 10px 0; }
   #filter { position: absolute; left: 10px; right: 160px; top: 10px; height: 30px; box-sizing: border-box; border: 0; border-radius: 9px;
-    background: #2c2c2e; color: #fff; padding: 0 10px; font-size: 13px; outline: none; -webkit-user-select: text; }
+    background: #2c2c2e; color: #fff; padding: 0 10px; font-size: 16px; outline: none; -webkit-user-select: text; }
   #edit .btns { position: absolute; right: 10px; top: 10px; margin: 0; }
   #editCount { position: absolute; left: 12px; top: 46px; font-size: 10px; color: #8e8e93; }
   #editList { position: absolute; left: 6px; right: 6px; top: 62px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
@@ -157,9 +195,26 @@
   .erow .up { position: absolute; right: 4px; top: 5px; width: 30px; height: 26px; line-height: 26px; text-align: center; color: #8e8e93; }
   .erow.full { opacity: .35; }
 
-  #toast { position: absolute; left: 50%; top: 14px; -webkit-transform: translateX(-50%); transform: translateX(-50%); z-index: 20;
-    background: rgba(58,58,60,.96); padding: 7px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; white-space: nowrap; display: none;
-    box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+  /* Toast drops in from the top and leaves the same way; transitions so rapid toasts retarget instead of restarting. */
+  #toast { position: absolute; left: 50%; top: 14px; z-index: 20; pointer-events: none; opacity: 0;
+    -webkit-transform: translate(-50%, -140%); transform: translate(-50%, -140%);
+    background: rgba(58,58,60,.96); padding: 7px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0,0,0,.5);
+    -webkit-transition: opacity 300ms ease, -webkit-transform 300ms ease; transition: opacity 300ms ease, transform 300ms ease; }
+  #toast.on { opacity: 1; -webkit-transform: translate(-50%, 0); transform: translate(-50%, 0); }
+
+  /* First load only: tiles and icons rise in with a short stagger (delays set from JS). */
+  @-webkit-keyframes rise { from { opacity: 0; -webkit-transform: translateY(8px); } to { opacity: 1; -webkit-transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .boot .tile, .boot .app, .boot .ricon { -webkit-animation: rise 420ms cubic-bezier(.23,1,.32,1) both; animation: rise 420ms cubic-bezier(.23,1,.32,1) both; }
+
+  /* Reduced motion: keep the fades that explain state, drop movement and scaling. */
+  @media (prefers-reduced-motion: reduce) {
+    .view, .view.on, .sheet, .scrim.on .sheet, .press.down, .app.down .ic, .rhome svg, #mPlay svg { -webkit-transform: none !important; transform: none !important; }
+    #toast, #toast.on { -webkit-transform: translate(-50%, 0); transform: translate(-50%, 0); }
+    .boot .tile, .boot .app, .boot .ricon { -webkit-animation: none; animation: none; }
+    #mProg i { -webkit-transition: none; transition: none; }
+  }
   #login .sheet { top: 40px; text-align: center; }
   #code { width: 70%; height: 32px; border: 0; border-radius: 9px; background: #2c2c2e; color: #fff; text-align: center; font-size: 16px; }
 </style>
@@ -172,23 +227,23 @@
   <div id="rail">
     <div id="rClock"><span id="time">–</span><span id="ampm"></span><span id="link"></span></div>
     <div id="rDock"></div>
-    <div class="rhome" id="rHome"></div>
+    <div class="rhome press" id="rHome"></div>
   </div>
 
   <!-- Dashboard: now playing + Internet + Batteries -->
   <div id="dash" class="view">
     <div id="music" class="tile">
-      <div id="mNote">♪</div><img id="mArt" class="none" alt="">
+      <div id="mNote">♪</div><img id="mArt" alt="">
       <div id="mInfo"><div id="mApp">Now Playing</div><div id="mTitle">Nothing playing</div><div id="mArtist">Spotify or Apple Music</div></div>
       <div id="mProg"><i id="mProgFill"></i></div>
       <div id="mTimes"><span id="mLeft"></span><b id="mPos"></b></div>
       <div id="mBtns">
-        <div class="mb" id="mPrev"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg></div>
-        <div class="mb" id="mPlay"></div>
-        <div class="mb" id="mNext"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M2 2l12 8-12 8zM16 2l12 8-12 8z" fill="#fff"/></svg></div>
+        <div class="mb press" id="mPrev"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M14 2L2 10l12 8zM28 2L16 10l12 8z" fill="#fff"/></svg></div>
+        <div class="mb press" id="mPlay"></div>
+        <div class="mb press" id="mNext"><svg width="30" height="20" viewBox="0 0 30 20" style="margin:-10px 0 0 -15px"><path d="M2 2l12 8-12 8zM16 2l12 8-12 8z" fill="#fff"/></svg></div>
       </div>
     </div>
-    <div id="net" class="tile">
+    <div id="net" class="tile press">
       <h3 id="netTitle">Internet</h3>
       <div class="big" id="netBig"><span class="arrow">↓</span> <span id="down">–</span><small>Mbps</small></div>
       <div class="sub" id="netSub"><span class="arrow up">↑</span> <span id="up">–</span> Mbps · <span id="ping">–</span> ms</div>
@@ -207,9 +262,9 @@
   <div id="phone" class="view">
     <div id="pvBox"><video id="pv" playsinline muted autoplay></video><div id="pvOff">Camera off</div></div>
     <div id="pCtl">
-      <div class="pbtn" id="pCam"><b>Camera</b><span>Off</span></div>
-      <div class="pbtn" id="pMic"><b>Microphone</b><span>Off</span></div>
-      <div class="pbtn small" id="pFlip"><b>Flip camera</b></div>
+      <div class="pbtn press" id="pCam"><b>Camera</b><span>Off</span></div>
+      <div class="pbtn press" id="pMic"><b>Microphone</b><span>Off</span></div>
+      <div class="pbtn small press" id="pFlip"><b>Flip camera</b></div>
       <div id="pNote"></div>
     </div>
     <div id="pSetup">
@@ -227,8 +282,8 @@
       <textarea id="askText" placeholder="Tap 🎤 on the keyboard and speak…"></textarea>
       <div class="btns">
         <div id="askMic"><svg width="14" height="18" viewBox="0 0 14 18"><rect x="4" y="0" width="6" height="11" rx="3" fill="#fff"/><path d="M1 8a6 6 0 0 0 12 0M7 14v3" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></div>
-        <div class="btn primary" id="askSend">Start chat</div>
-        <div class="btn" id="askCancel">Cancel</div>
+        <div class="btn primary press" id="askSend">Start chat</div>
+        <div class="btn press" id="askCancel">Cancel</div>
       </div>
     </div>
   </div>
@@ -237,7 +292,7 @@
   <div id="edit" class="scrim">
     <div class="sheet">
       <input id="filter" placeholder="Search apps" autocorrect="off" autocapitalize="none">
-      <div class="btns"><div class="btn primary" id="editSave">Save</div><div class="btn" id="editCancel">Cancel</div></div>
+      <div class="btns"><div class="btn primary press" id="editSave">Save</div><div class="btn press" id="editCancel">Cancel</div></div>
       <div id="editCount"></div>
       <div id="editList"></div>
     </div>
@@ -247,7 +302,7 @@
     <div class="sheet">
       <h2>Enter the access code from the Mac</h2>
       <input id="code" autocapitalize="none" autocorrect="off">
-      <div class="btns"><div class="btn primary" id="go">Connect</div></div>
+      <div class="btns"><div class="btn primary press" id="go">Connect</div></div>
     </div>
   </div>
 </div>
@@ -274,8 +329,8 @@
     r.send(body === undefined ? null : body);
   }
   function toast(msg) {
-    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
-    clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = 'none'; }, 1700);
+    var t = $('toast'); t.textContent = msg; t.className = 'on';
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = ''; }, 1900);
   }
   // Tap handler: instant on touch (no 300 ms delay), works with a mouse too, shows a pressed state.
   function tap(el, fn, hold) {
@@ -399,10 +454,11 @@
     $('apps').className = 'view' + (name === 'apps' ? ' on' : '');
     $('phone').className = 'view' + (name === 'phone' ? ' on' : '');
     // The home button flips between the home screen and the dashboard (from Phone it goes home).
-    $('rHome').innerHTML = name === 'apps' ? DASH_SVG : GRID_SVG;
+    $('rHome').className = 'rhome press' + (name === 'apps' ? ' dash' : '');
     if (name === 'phone') phoneEnter(); else pollStats();
     store('view', name);
   }
+  $('rHome').innerHTML = GRID_SVG.replace('<svg', '<svg class="g-grid"') + DASH_SVG.replace('<svg', '<svg class="g-dash"');
   tap($('rHome'), function () { show(view === 'apps' ? 'dash' : 'apps'); });
   function sheet(id, on) { $(id).className = 'scrim' + (on ? ' on' : ''); }
   window.deckHome = function () { sheet('claude', false); sheet('edit', false); show('dash'); };
@@ -514,13 +570,13 @@
     dock.innerHTML = '';
     list.forEach(function (a) {
       var el = document.createElement('div');
-      el.className = 'ricon';
+      el.className = 'ricon press';
       el.innerHTML = iconImg(a);
       tap(el, function () { launch(a); }, openEditor);
       dock.appendChild(el);
     });
     var note = document.createElement('div');
-    note.className = 'ricon note-ic';
+    note.className = 'ricon press note-ic';
     note.innerHTML = noteSvg(30);
     tap(note, openClaude, takeNoteHold);
     dock.appendChild(note);
@@ -710,32 +766,45 @@
   });
 
   // ---------- now playing (Spotify / Apple Music on the Mac) ----------
-  var PLAY = '<svg width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -13px"><path d="M6 3v24l21-12z" fill="#fff"/></svg>';
-  var PAUSE = '<svg width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -15px"><path d="M6 3h6.5v24H6zM17.5 3H24v24h-6.5z" fill="#fff"/></svg>';
-  var track = { playing: false, position: 0, duration: 0, at: 0 }, artKey = '';
-  function setPlayIcon(playing) { $('mPlay').innerHTML = playing ? PAUSE : PLAY; }
+  var PLAY = '<svg class="i-play" width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -13px"><path d="M6 3v24l21-12z" fill="#fff"/></svg>';
+  var PAUSE = '<svg class="i-pause" width="30" height="30" viewBox="0 0 30 30" style="margin:-15px 0 0 -15px"><path d="M6 3h6.5v24H6zM17.5 3H24v24h-6.5z" fill="#fff"/></svg>';
+  var track = { playing: false, position: 0, duration: 0, at: 0, id: '' }, artKey = '', shownPos = -1;
+  $('mPlay').innerHTML = PLAY + PAUSE;
+  function setPlayIcon(playing) { $('mPlay').className = 'mb press' + (playing ? ' playing' : ''); }
+  $('mArt').onload = function () { $('mArt').className = 'shown'; };
   function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function renderMusic(m) {
     m = m || {};
     $('mApp').textContent = m.app ? m.app : 'Now Playing';
+    $('mApp').className = m.app === 'Spotify' ? 'spotify' : m.app === 'Music' ? 'music' : '';
     $('mTitle').textContent = m.title || 'Nothing playing';
     $('mArtist').textContent = m.title ? (m.artist || '') : 'Spotify or Apple Music';
-    track = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now() };
+    track = { playing: !!m.playing, position: m.position || 0, duration: m.duration || 0, at: Date.now(), id: m.id || '' };
     setPlayIcon(track.playing);
     var key = m.id && m.hasArt ? m.id : '';
     if (key !== artKey) {
       artKey = key;
-      if (key) { $('mArt').src = url('/artwork', 'id=' + encodeURIComponent(key)); $('mArt').className = ''; }
-      else $('mArt').className = 'none';
+      $('mArt').className = '';   // fade the old cover out; onload fades the new one in
+      if (key) $('mArt').src = url('/artwork', 'id=' + encodeURIComponent(key));
     }
     tickProgress();
   }
+  // Each tick sets where the bar should be one second from now and lets a linear transition carry it there.
+  // Seeking back or a new track snaps instead of sliding backwards.
   function tickProgress() {
-    if (!track.duration) { $('mProgFill').style.width = '0'; $('mPos').textContent = $('mLeft').textContent = ''; return; }
+    var fill = $('mProgFill');
+    if (!track.duration) { setFill(0, true); $('mPos').textContent = $('mLeft').textContent = ''; return; }
     var pos = Math.min(track.duration, track.position + (track.playing ? (Date.now() - track.at) / 1000 : 0));
-    $('mProgFill').style.width = pos / track.duration * 100 + '%';
+    var target = track.playing ? Math.min(track.duration, pos + 1) : pos;
+    setFill(target / track.duration, shownPos < 0 || pos < shownPos - 1.5 || pos > shownPos + 3 || !track.playing);
+    shownPos = target;
     $('mPos').textContent = clock(pos);
     $('mLeft').textContent = '-' + clock(track.duration - pos);
+    function setFill(f, jump) {
+      fill.className = jump ? 'jump' : '';
+      if (jump) fill.offsetWidth;   // apply the snap before transitions come back
+      fill.style.webkitTransform = fill.style.transform = 'scaleX(' + f + ')';
+    }
   }
   setInterval(tickProgress, 1000);
   function media(cmd) {
@@ -781,8 +850,8 @@
     phoneStatus();
   }
   function phoneStatus() {
-    $('pCam').className = 'pbtn' + (camStream ? ' on' : '');
-    $('pMic').className = 'pbtn' + (micStream ? ' on' : '');
+    $('pCam').className = 'pbtn press' + (camStream ? ' on' : '');
+    $('pMic').className = 'pbtn press' + (micStream ? ' on' : '');
     $('pCam').lastChild.textContent = camStream ? (wsReady() ? 'Streaming to Mac' : 'Connecting…') : 'Off';
     $('pMic').lastChild.textContent = micStream ? (wsReady() ? 'Streaming → BlackHole' : 'Connecting…') : 'Off';
     $('pvOff').style.display = camStream ? 'none' : '';
@@ -858,7 +927,53 @@
     });
   }
 
+  // ---------- keep the screen on ----------
+  // Over HTTPS (iOS 16.4+, home-screen apps since 18.4) the Screen Wake Lock API does it properly.
+  // Otherwise, a tiny silent looping video keeps the display awake (started from a tap, as iOS requires).
+  // iOS drops both when the page is hidden, so they are re-taken on every return and every tap.
+  var wakeLock = null, awakeVideo = null;
+  var AWAKE_MP4 = 'data:video/mp4;base64,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';
+  function keepAwake() {
+    if (navigator.wakeLock && window.isSecureContext) {
+      if (wakeLock || document.hidden) return;
+      wakeLock = true;   // request pending
+      navigator.wakeLock.request('screen').then(function (lock) {
+        wakeLock = lock;
+        lock.addEventListener('release', function () { wakeLock = null; });
+      }, function () { wakeLock = null; videoAwake(); });
+    } else videoAwake();
+  }
+  function videoAwake() {
+    if (!awakeVideo) {
+      awakeVideo = document.createElement('video');
+      awakeVideo.setAttribute('playsinline', '');
+      awakeVideo.setAttribute('muted', '');
+      awakeVideo.muted = true;
+      awakeVideo.loop = true;
+      awakeVideo.src = AWAKE_MP4;
+      awakeVideo.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      document.body.appendChild(awakeVideo);
+    }
+    if (awakeVideo.paused) { var p = awakeVideo.play(); if (p && p['catch']) p['catch'](function () {}); }
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) keepAwake(); });
+  document.addEventListener('touchend', keepAwake, true);
+  document.addEventListener('click', keepAwake, true);
+
   // ---------- boot ----------
+  // First load only: the visible tiles and icons rise in, 40ms apart. The class is removed afterwards
+  // because a finished animation would otherwise keep overriding the press transforms.
+  function bootIn() {
+    var items = [].slice.call(document.querySelectorAll('#rail .ricon, #rHome'))
+      .concat(view === 'apps' ? [].slice.call($('grid').children) : [$('music'), $('net'), $('bat')]);
+    items.forEach(function (el, i) { el.style.webkitAnimationDelay = el.style.animationDelay = i * 40 + 'ms'; });
+    $('stage').className = 'boot';
+    setTimeout(function () {
+      $('stage').className = '';
+      items.forEach(function (el) { el.style.webkitAnimationDelay = el.style.animationDelay = ''; });
+    }, 420 + items.length * 40);
+  }
+  var booted = false;
   function connect() {
     xhr('GET', url('/info'), null, function (s) {
       if (s === 403 || !token) { sheet('login', true); return; }
@@ -867,6 +982,7 @@
       loadKeys();
       var last = store('view');
       show(last === 'apps' || (modern && last === 'phone') ? last : 'dash');
+      if (!booted) { booted = true; bootIn(); }
       if (/edit/.test(location.search)) setTimeout(openEditor, 300);
     });
   }
@@ -874,7 +990,7 @@
     token = $('code').value.replace(/\s/g, '').toLowerCase();
     store('token', token); location.hash = 'k=' + token; connect();
   });
-  renderGrid(); fit(); tick(); connect();
+  renderGrid(); fit(); tick(); connect(); keepAwake();
 })();
 </script>
 </body>

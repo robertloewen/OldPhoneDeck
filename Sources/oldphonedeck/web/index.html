@@ -28,6 +28,33 @@
   #safe { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   .tnum { -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum"; }
+
+  /* ---- backdrop: the wallpaper (or the playing cover, blurred) fills the whole screen behind every page ---- */
+  #bg { position: fixed; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; background: #0b0b16; }
+  #wall { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 12% 18%, rgba(94,92,230,.55), rgba(94,92,230,0) 58%),
+                radial-gradient(ellipse at 88% 85%, rgba(10,132,255,.45), rgba(10,132,255,0) 55%),
+                radial-gradient(ellipse at 72% 8%, rgba(191,90,242,.35), rgba(191,90,242,0) 50%), #0b0b16;
+    -webkit-transition: opacity 600ms ease; transition: opacity 600ms ease; }
+  #bg.art #wall { opacity: 0; }
+  #bgArt { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; object-fit: cover; opacity: 0;
+    -webkit-filter: blur(48px) saturate(1.6); filter: blur(48px) saturate(1.6);
+    -webkit-transition: opacity 600ms ease; transition: opacity 600ms ease; }
+  #bgArt.shown { opacity: .75; }
+  #bgShade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.3); }
+
+  /* ---- Liquid Glass (as close as the web gets: Safari can't refract, so no lensing at the edges) ----
+     A thin, clear fill over a blurred and colour-boosted backdrop; a rim that catches light on the top-left and
+     bottom-right edges (a gradient border); a soft specular sheen from above; it brightens while pressed. */
+  .glass { box-sizing: border-box; border: 1px solid transparent;
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) padding-box,
+                linear-gradient(135deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 35%, rgba(255,255,255,.04) 65%, rgba(255,255,255,.32)) border-box;
+    -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.22), 0 10px 30px rgba(0,0,0,.25); }
+  /* z-index -1: under the content but over the fill (backdrop-filter makes .glass its own stacking context). */
+  .glass:before { content: ""; position: absolute; z-index: -1; left: 0; top: 0; right: 0; bottom: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(ellipse at 30% -10%, rgba(255,255,255,.16), rgba(255,255,255,0) 55%); }
+  .glass.down { -webkit-backdrop-filter: blur(22px) saturate(2) brightness(1.3); backdrop-filter: blur(22px) saturate(2) brightness(1.3); }
   /* Shared press feedback: scale down the instant a finger lands. */
   .press { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
     transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }
@@ -38,17 +65,20 @@
   #track { position: absolute; left: 0; top: 0; bottom: 0; }
   #track.settle { -webkit-transition: -webkit-transform 420ms cubic-bezier(.32,.72,0,1); transition: transform 420ms cubic-bezier(.32,.72,0,1); }
   .page { position: absolute; top: 0; bottom: 0; overflow: hidden; }
-  #dots { position: absolute; left: 0; right: 0; bottom: 6px; height: 6px; text-align: center; font-size: 0; pointer-events: none; }
-  #dots i { display: inline-block; width: 6px; height: 6px; border-radius: 3px; margin: 0 4px; background: rgba(255,255,255,.25);
+  #dots { position: absolute; left: 50%; bottom: 2px; height: 16px; padding: 0 5px; border-radius: 8px; font-size: 0; line-height: 14px; white-space: nowrap;
+    pointer-events: none; -webkit-transform: translateX(-50%); transform: translateX(-50%); }
+  #dots i { display: inline-block; vertical-align: middle; width: 6px; height: 6px; border-radius: 3px; margin: 0 3px; background: rgba(255,255,255,.3);
     -webkit-transition: background 250ms ease; transition: background 250ms ease; }
   #dots i.on { background: #fff; }
 
   /* ---- rail: a drawer pulled in from the left edge, over a dimmed page ---- */
-  #railScrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 6; background: #000; opacity: 0; visibility: hidden; }
+  /* Invisible: only catches the tap beside the open rail. (A dimmer would show the stage's edges against the backdrop.) */
+  #railScrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 6; visibility: hidden; }
+  /* The rail floats as a glass panel; closed it sits fully off the left edge (RAILW in JS). */
   #railScrim.show { visibility: visible; }
-  #rail { position: absolute; left: 0; top: 0; bottom: 0; width: 84px; z-index: 7; background: #141416;
-    box-shadow: inset -.5px 0 0 rgba(255,255,255,.08), 8px 0 30px rgba(0,0,0,.5);
-    -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  #rail { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 84px; z-index: 7; border-radius: 24px; overflow: hidden;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.25), 0 0 50px rgba(0,0,0,.55);
+    -webkit-transform: translateX(-110px); transform: translateX(-110px); }
   #rail.settle, #railScrim.settle { -webkit-transition: -webkit-transform 420ms cubic-bezier(.32,.72,0,1), opacity 420ms cubic-bezier(.32,.72,0,1);
     transition: transform 420ms cubic-bezier(.32,.72,0,1), opacity 420ms cubic-bezier(.32,.72,0,1); }
   #rClock { position: absolute; left: 0; right: 0; top: 13px; text-align: center; line-height: 1; }
@@ -69,7 +99,7 @@
   /* New artwork fades in once it has loaded, instead of popping. */
   .m-art { box-shadow: 0 10px 28px rgba(0,0,0,.5); opacity: 0; -webkit-transition: opacity 300ms ease; transition: opacity 300ms ease; }
   .m-art.shown { opacity: 1; }
-  .m-note { text-align: center; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
+  .m-note { text-align: center; color: rgba(255,255,255,.45); background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.15); }
   .m-meta { position: absolute; }
   .m-app { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: rgba(255,255,255,.7); }
   .m-app.spotify { color: #1ed760; }
@@ -99,91 +129,80 @@
   .m-play .i-pause, .m-play.playing .i-play { opacity: 0; -webkit-transform: scale(.7); transform: scale(.7); }
   .m-play.playing .i-pause { opacity: 1; -webkit-transform: none; transform: none; }
 
-  /* ---- page 1 · Immersive: the cover sets the mood, glass on top ---- */
-  #imm { position: absolute; border-radius: 18px; overflow: hidden; background: #111; }
-  /* Wallpaper when nothing is playing: soft colour fields on deep navy. It fades away once a cover is in. */
-  #immWall { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
-    background: radial-gradient(ellipse at 12% 18%, rgba(94,92,230,.55), rgba(94,92,230,0) 58%),
-                radial-gradient(ellipse at 88% 85%, rgba(10,132,255,.45), rgba(10,132,255,0) 55%),
-                radial-gradient(ellipse at 72% 8%, rgba(191,90,242,.35), rgba(191,90,242,0) 50%), #0b0b16;
-    -webkit-transition: opacity 500ms ease; transition: opacity 500ms ease; }
-  #imm.art #immWall { opacity: 0; }
-  #immBg { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; opacity: 0;
-    -webkit-filter: blur(36px) saturate(1.5); filter: blur(36px) saturate(1.5);
-    -webkit-transition: opacity 500ms ease; transition: opacity 500ms ease; }
-  #immBg.shown { opacity: .6; }
-  #immShade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(0,0,0,.55)); }
+  /* ---- page 1 · Immersive: content straight on the backdrop, glass pills on the right ---- */
+  #imm { position: absolute; }
   #imm .m-title { font-size: 21px; line-height: 25px; max-height: 50px; }
   #imm .m-artist { font-size: 14px; }
   .bigtime { position: absolute; text-align: right; }
   .bigtime b { display: block; font-weight: 600; line-height: 1; }
   .bigtime span { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.75); margin-top: 7px; text-transform: uppercase; letter-spacing: .6px; }
-  .pill { position: absolute; height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 14px; line-height: 44px; white-space: nowrap; overflow: hidden;
-    background: rgba(255,255,255,.13); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18); }
+  .pill { position: absolute; height: 44px; padding: 0 14px; border-radius: 22px; line-height: 42px; white-space: nowrap; overflow: hidden; }
   .pill span { font-size: 12px; color: rgba(255,255,255,.72); }
   .pill b { float: right; font-weight: 600; }
   .pill svg { vertical-align: -2px; margin-left: 8px; }
 
   /* ---- page 2 · Cluster: an instrument panel, the clock is the hero ---- */
-  .dial { position: absolute; text-align: center; }
+  .dial { position: absolute; text-align: center; border-radius: 50%; }
   .dial svg { position: absolute; left: 0; top: 0; }
   .dial .dv { position: absolute; left: 0; right: 0; }
   .dial b { display: block; font-size: 30px; letter-spacing: -1px; line-height: 1; }
-  .dial small { display: block; font-size: 10px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: .6px; margin-top: 5px; }
-  .dial em { display: block; font-style: normal; font-size: 10px; color: #aeaeb2; margin-top: 4px; white-space: nowrap; }
+  .dial small { display: block; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .6px; margin-top: 5px; }
+  .dial em { display: block; font-style: normal; font-size: 10px; color: rgba(255,255,255,.7); margin-top: 4px; white-space: nowrap; }
   .ring { -webkit-transition: stroke-dasharray 600ms cubic-bezier(.23,1,.32,1); transition: stroke-dasharray 600ms cubic-bezier(.23,1,.32,1); }
   #cluHero { position: absolute; text-align: center; }
   #cluHero b { display: block; font-weight: 200; letter-spacing: -3px; line-height: 1; }
-  #cluHero span { display: block; font-size: 12px; font-weight: 600; color: #aeaeb2; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
-  #strip { position: absolute; border-radius: 18px; background: #1c1c1e; overflow: hidden; }
+  #cluHero span { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.75); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+  #strip { position: absolute; border-radius: 24px; overflow: hidden; }
   #strip .m-title { font-size: 14px; line-height: 18px; max-height: 18px; margin-top: 3px; white-space: nowrap; text-overflow: ellipsis; }
-  #strip .m-artist { font-size: 12px; color: #aeaeb2; }
+  #strip .m-artist { font-size: 12px; }
 
   /* ---- page 3 · app grid ---- */
   .app { position: absolute; text-align: center; }
   .ic { position: relative; margin: 0 auto; }
   /* macOS icons draw their squircle at ~80% of the canvas; scale up so they match Take note / Phone. */
   .ic img { position: absolute; left: -12%; top: -12%; width: 124%; height: 124%; }
-  .app .label { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app .label { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .app .ic { -webkit-transition: -webkit-transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1);
     transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms cubic-bezier(.23,1,.32,1); }
   .app.down .ic { -webkit-transform: scale(.92); transform: scale(.92); opacity: .85; }
-  .app.empty .ic { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.18); }
+  .app .ic { box-shadow: 0 8px 18px rgba(0,0,0,.28); }
+  .app.empty .ic { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
   .app.empty .ic:after { content: "+"; position: absolute; left: 0; right: 0; top: 50%; margin-top: -19px; font-size: 32px; font-weight: 200; color: #8e8e93; }
-  .app.empty .label { color: #8e8e93; }
+  .app.empty .label { color: rgba(255,255,255,.6); }
   .note-ic { background: linear-gradient(180deg, #ff9f0a 0%, #f2700c 100%); }
   .phone-ic { background: linear-gradient(180deg, #5ee07c 0%, #29b34a 100%); }
   .note-ic svg, .phone-ic svg { position: absolute; left: 50%; top: 50%; }
-  #hint { position: absolute; font-size: 10px; color: #48484a; text-align: center; }
+  #hint { position: absolute; font-size: 10px; color: rgba(255,255,255,.4); text-align: center; }
 
   /* ---- page 4 · Phone (modern iPhones) ---- */
-  #pvBox { position: absolute; border-radius: 16px; overflow: hidden; background: #1c1c1e; }
+  #pvBox { position: absolute; border-radius: 24px; overflow: hidden; }
   #pv { width: 100%; height: 100%; object-fit: cover; display: block; }
   #pvOff { position: absolute; left: 0; right: 0; top: 50%; margin-top: -8px; text-align: center; color: #636366; font-size: 12px; }
   #pCtl { position: absolute; }
-  .pbtn { height: 54px; border-radius: 14px; margin-bottom: 10px; padding: 10px 14px; box-sizing: border-box; background: #1c1c1e; }
+  .pbtn { position: relative; height: 54px; border-radius: 20px; margin-bottom: 10px; padding: 9px 14px; }
   .pbtn b { display: block; font-size: 13px; font-weight: 600; }
-  .pbtn span { display: block; font-size: 11px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbtn span { display: block; font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pbtn.small { height: 40px; padding-top: 12px; }
-  .pbtn.on { background: #30d158; }
+  .pbtn.on { background: rgba(48,209,88,.85) padding-box, linear-gradient(135deg, rgba(255,255,255,.6), rgba(255,255,255,.1)) border-box; }
   .pbtn.on span { color: #e3f9e8; }
   #pNote { font-size: 9.5px; color: #8e8e93; line-height: 13px; margin-top: 4px; word-break: break-all; }
-  #pSetup { position: absolute; border-radius: 16px; padding: 16px; box-sizing: border-box; background: #1c1c1e; display: none; }
+  #pSetup { position: absolute; border-radius: 24px; padding: 16px; display: none; }
   #pSetup h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
   #pSetup p { margin: 0 0 8px; font-size: 12px; line-height: 17px; color: #d1d1d6; }
   #pSetup a { color: #0a84ff; }
 
   /* ---- sheets ---- */
   /* Modals: backdrop fades, sheet scales up from .96 (centred, not anchored to a trigger). Exit is faster than entry. */
-  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 10;
+  .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.35); z-index: 10;
     visibility: hidden; opacity: 0;
     -webkit-transition: opacity 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms;
     transition: opacity 180ms cubic-bezier(.23,1,.32,1), visibility 0s linear 180ms; }
   .scrim.on { visibility: visible; opacity: 1;
     -webkit-transition: opacity 250ms cubic-bezier(.23,1,.32,1); transition: opacity 250ms cubic-bezier(.23,1,.32,1); }
-  .sheet { position: absolute; top: 8px; left: 50%; width: 360px; margin-left: -180px; border-radius: 20px; padding: 14px; box-sizing: border-box;
-    background: #1c1c1e; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1), 0 20px 40px rgba(0,0,0,.6);
+  /* Sheets are a denser glass, so text on them stays readable over any backdrop. */
+  .sheet { position: absolute; top: 8px; left: 50%; width: 360px; margin-left: -180px; border-radius: 26px; padding: 14px; box-sizing: border-box;
+    background: rgba(36,36,40,.62); -webkit-backdrop-filter: blur(36px) saturate(1.8); backdrop-filter: blur(36px) saturate(1.8);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.2), inset 0 0 0 .5px rgba(255,255,255,.16), 0 24px 50px rgba(0,0,0,.45);
     -webkit-transform: scale(.96); transform: scale(.96);
     -webkit-transition: -webkit-transform 180ms cubic-bezier(.23,1,.32,1); transition: transform 180ms cubic-bezier(.23,1,.32,1); }
   .scrim.on .sheet { -webkit-transform: none; transform: none;
@@ -192,17 +211,17 @@
   .sheet h2 small { font-size: 11px; font-weight: 500; color: #8e8e93; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #ff9f0a; margin-right: 6px; }
   #askText { width: 100%; height: 56px; box-sizing: border-box; border: 0; border-radius: 11px; padding: 8px 10px; resize: none;
-    background: #2c2c2e; color: #fff; font: 16px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
+    background: rgba(255,255,255,.1); color: #fff; font: 16px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
   .btns { margin-top: 10px; overflow: hidden; }
   .btn { float: right; margin-left: 8px; padding: 0 16px; height: 30px; line-height: 30px; border-radius: 15px; font-size: 12.5px; font-weight: 600;
-    background: #3a3a3c; color: #fff; }
+    background: rgba(255,255,255,.14); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
   .btn.primary { background: #0a84ff; }
-  #askMic { float: left; width: 30px; height: 30px; border-radius: 15px; background: #3a3a3c; margin-right: 8px; position: relative; display: none; }
+  #askMic { float: left; width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.14); margin-right: 8px; position: relative; display: none; }
   #askMic.live { background: #ff453a; }
   #askMic svg { position: absolute; left: 8px; top: 6px; }
   #edit .sheet { left: 8px; right: 8px; width: auto; margin-left: 0; top: 8px; bottom: 8px; padding: 10px 10px 0; }
   #filter { position: absolute; left: 10px; right: 160px; top: 10px; height: 30px; box-sizing: border-box; border: 0; border-radius: 9px;
-    background: #2c2c2e; color: #fff; padding: 0 10px; font-size: 16px; outline: none; -webkit-user-select: text; }
+    background: rgba(255,255,255,.1); color: #fff; padding: 0 10px; font-size: 16px; outline: none; -webkit-user-select: text; }
   #edit .btns { position: absolute; right: 10px; top: 10px; margin: 0; }
   #editCount { position: absolute; left: 12px; top: 46px; font-size: 10px; color: #8e8e93; }
   #editList { position: absolute; left: 6px; right: 6px; top: 62px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
@@ -218,8 +237,9 @@
   /* Toast drops in from the top and leaves the same way; transitions so rapid toasts retarget instead of restarting. */
   #toast { position: absolute; left: 50%; top: 14px; z-index: 20; pointer-events: none; opacity: 0;
     -webkit-transform: translate(-50%, -140%); transform: translate(-50%, -140%);
-    background: rgba(58,58,60,.96); padding: 7px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; white-space: nowrap;
-    box-shadow: 0 6px 18px rgba(0,0,0,.5);
+    background: rgba(60,60,66,.5); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+    padding: 8px 16px; border-radius: 18px; font-size: 12px; font-weight: 500; white-space: nowrap;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.22), inset 0 0 0 .5px rgba(255,255,255,.18), 0 8px 24px rgba(0,0,0,.35);
     -webkit-transition: opacity 300ms ease, -webkit-transform 300ms ease; transition: opacity 300ms ease, transform 300ms ease; }
   #toast.on { opacity: 1; -webkit-transform: translate(-50%, 0); transform: translate(-50%, 0); }
 
@@ -236,11 +256,12 @@
     .m-prog i, #track.settle, #rail.settle { -webkit-transition: none; transition: none; }
   }
   #login .sheet { top: 40px; text-align: center; }
-  #code { width: 70%; height: 32px; border: 0; border-radius: 9px; background: #2c2c2e; color: #fff; text-align: center; font-size: 16px; }
+  #code { width: 70%; height: 32px; border: 0; border-radius: 9px; background: rgba(255,255,255,.1); color: #fff; text-align: center; font-size: 16px; }
 </style>
 </head>
 <body>
 <div id="safe"></div>
+<div id="bg"><div id="wall"></div><img id="bgArt" alt=""><div id="bgShade"></div></div>
 <div id="stage">
   <div id="toast"></div>
 
@@ -248,22 +269,21 @@
     <!-- Page 1 · Immersive -->
     <div class="page" id="pImm">
       <div id="imm">
-        <div id="immWall"></div><img id="immBg" alt=""><div id="immShade"></div>
         <div class="m-note">♪</div><img class="m-art" alt="">
         <div class="m-meta"><div class="m-app">Now Playing</div><div class="m-title">Nothing playing</div><div class="m-artist">Spotify or Apple Music</div></div>
         <div class="m-prog"><i></i></div><div class="m-times tnum"><span class="m-left"></span><b class="m-pos"></b></div><div class="m-hit"></div>
         <div class="m-btns"></div>
         <div class="bigtime" id="immTime"><b class="tnum c-time"></b><span class="c-date"></span></div>
-        <div class="pill press n-tap" id="immNet"><span class="n-title">Internet</span><b class="tnum">↓ <span class="n-down">–</span> Mbps</b></div>
-        <div class="pill" id="immBat"><span>Batteries</span><b class="tnum b-line"></b></div>
+        <div class="pill glass press n-tap" id="immNet"><span class="n-title">Internet</span><b class="tnum">↓ <span class="n-down">–</span> Mbps</b></div>
+        <div class="pill glass" id="immBat"><span>Batteries</span><b class="tnum b-line"></b></div>
       </div>
     </div>
     <!-- Page 2 · Cluster -->
     <div class="page" id="pClu">
-      <div class="dial press n-tap" id="cluNet"><svg class="n-ring"></svg><div class="dv"><b class="tnum n-down">–</b><small class="n-title">Mbit/s ↓</small><em class="tnum">↑ <span class="n-up">–</span> · <span class="n-ping">–</span> ms</em></div></div>
+      <div class="dial glass press n-tap" id="cluNet"><svg class="n-ring"></svg><div class="dv"><b class="tnum n-down">–</b><small class="n-title">Mbit/s ↓</small><em class="tnum">↑ <span class="n-up">–</span> · <span class="n-ping">–</span> ms</em></div></div>
       <div id="cluHero"><b class="tnum c-time"></b><span class="c-date"></span></div>
-      <div class="dial" id="cluBat"><svg class="b-ring"></svg><div class="dv"><b class="tnum b-main">–</b><small class="b-name">Battery</small><em class="tnum b-rest"></em></div></div>
-      <div id="strip">
+      <div class="dial glass" id="cluBat"><svg class="b-ring"></svg><div class="dv"><b class="tnum b-main">–</b><small class="b-name">Battery</small><em class="tnum b-rest"></em></div></div>
+      <div id="strip" class="glass">
         <div class="m-note">♪</div><img class="m-art" alt="">
         <div class="m-meta"><div class="m-app">Now Playing</div><div class="m-title">Nothing playing</div><div class="m-artist">Spotify or Apple Music</div></div>
         <div class="m-prog"><i></i></div><div class="m-times tnum"><span class="m-left"></span><b class="m-pos"></b></div><div class="m-hit"></div>
@@ -277,14 +297,14 @@
     </div>
     <!-- Page 4 · Phone, modern iPhones only: camera + mic to the Mac (needs HTTPS) -->
     <div class="page" id="pPhone">
-      <div id="pvBox"><video id="pv" playsinline muted autoplay></video><div id="pvOff">Camera off</div></div>
+      <div id="pvBox" class="glass"><video id="pv" playsinline muted autoplay></video><div id="pvOff">Camera off</div></div>
       <div id="pCtl">
-        <div class="pbtn press" id="pCam"><b>Camera</b><span>Off</span></div>
-        <div class="pbtn press" id="pMic"><b>Microphone</b><span>Off</span></div>
-        <div class="pbtn small press" id="pFlip"><b>Flip camera</b></div>
+        <div class="pbtn glass press" id="pCam"><b>Camera</b><span>Off</span></div>
+        <div class="pbtn glass press" id="pMic"><b>Microphone</b><span>Off</span></div>
+        <div class="pbtn glass small press" id="pFlip"><b>Flip camera</b></div>
         <div id="pNote"></div>
       </div>
-      <div id="pSetup">
+      <div id="pSetup" class="glass">
         <h2>One-time setup for camera &amp; mic</h2>
         <p>1. <a href="/oldphonedeck.mobileconfig">Download the OldPhoneDeck profile</a>, tap <b>Allow</b>, then Settings → <b>Profile Downloaded</b> → Install.</p>
         <p>2. Settings → General → About → <b>Certificate Trust Settings</b> → turn on OldPhoneDeck CA.</p>
@@ -292,10 +312,10 @@
       </div>
     </div>
   </div>
-  <div id="dots"></div>
+  <div id="dots" class="glass"></div>
 
   <div id="railScrim"></div>
-  <div id="rail">
+  <div id="rail" class="glass">
     <div id="rClock"><span id="time" class="tnum">–</span><span id="link"></span></div>
     <div id="rDock"></div>
   </div>
@@ -549,13 +569,13 @@
   window.deckHome = function () { sheet('claude', false); sheet('edit', false); railTo(false); goPage(0); };
 
   // ---------- rail drawer ----------
-  var RAILW = 84, railOpen = false;
+  var RAILW = 100, railOpen = false;   // travel: the 84pt panel plus its 8pt inset and some room for the shadow
   function railPos(x, animate) {   // x: 0 = open, -RAILW = closed
     var r = $('rail'), sc = $('railScrim');
-    r.className = sc.className = animate ? 'settle' : '';
+    r.className = 'glass' + (animate ? ' settle' : '');
+    sc.className = animate ? 'settle' : '';
     if (x > -RAILW || animate) sc.className += ' show';   // stays visible while it fades out
     translateX(r, x);
-    sc.style.opacity = 0.45 * (1 + x / RAILW);
   }
   function railTo(open) {
     railOpen = open;
@@ -910,7 +930,8 @@
   });
   function setPlayIcon(playing) { each('m-play', function (e) { e.className = 'mb press m-play' + (playing ? ' playing' : ''); }); }
   each('m-art', function (img) { img.onload = function () { img.className = 'm-art shown'; }; });
-  $('immBg').onload = function () { $('immBg').className = 'shown'; $('imm').className = 'art'; };
+  // The backdrop behind every page follows the cover: wallpaper when nothing plays, the blurred cover when it does.
+  $('bgArt').onload = function () { $('bgArt').className = 'shown'; $('bg').className = 'art'; };
   function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function renderMusic(m) {
     m = m || {};
@@ -928,10 +949,10 @@
     var key = m.id && m.hasArt ? m.id : '';
     if (key !== artKey) {
       artKey = key;
-      // Fade the old cover out; onload fades the new one in (on both pages and in the Immersive background).
+      // Fade the old cover out; onload fades the new one in (on both pages and in the backdrop).
       var src = key ? url('/artwork', 'id=' + encodeURIComponent(key)) : '';
       each('m-art', function (img) { img.className = 'm-art'; if (src) img.src = src; });
-      $('immBg').className = ''; if (src) $('immBg').src = src; else $('imm').className = '';
+      $('bgArt').className = ''; if (src) $('bgArt').src = src; else $('bg').className = '';
     }
     tickProgress();
   }
@@ -1039,8 +1060,8 @@
     phoneStatus();
   }
   function phoneStatus() {
-    $('pCam').className = 'pbtn press' + (camStream ? ' on' : '');
-    $('pMic').className = 'pbtn press' + (micStream ? ' on' : '');
+    $('pCam').className = 'pbtn glass press' + (camStream ? ' on' : '');
+    $('pMic').className = 'pbtn glass press' + (micStream ? ' on' : '');
     $('pCam').lastChild.textContent = camStream ? (wsReady() ? 'Streaming to Mac' : 'Connecting…') : 'Off';
     $('pMic').lastChild.textContent = micStream ? (wsReady() ? 'Streaming → BlackHole' : 'Connecting…') : 'Off';
     $('pvOff').style.display = camStream ? 'none' : '';
@@ -1154,7 +1175,7 @@
   // because a finished animation would otherwise keep overriding the press transforms.
   function bootIn() {
     var p = $(pages[page].id), items = p.id === 'pApps' ? [].slice.call($('grid').children) : [].slice.call(p.children);
-    if (p.id === 'pImm') items = [].slice.call($('imm').children).filter(function (e) { return e.id !== 'immBg' && e.id !== 'immShade' && e.id !== 'immWall'; });
+    if (p.id === 'pImm') items = [].slice.call($('imm').children);
     items.forEach(function (el, i) { el.style.webkitAnimationDelay = el.style.animationDelay = i * 40 + 'ms'; el.className += ' rise'; });
     setTimeout(function () {
       items.forEach(function (el) { el.className = el.className.replace(/ rise/g, ''); el.style.webkitAnimationDelay = el.style.animationDelay = ''; });
